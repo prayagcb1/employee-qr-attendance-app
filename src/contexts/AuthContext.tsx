@@ -8,6 +8,7 @@ interface Employee {
   employee_code: string;
   full_name: string;
   email: string;
+  username: string;
   phone: string | null;
   role: 'field_worker' | 'supervisor' | 'admin';
   active: boolean;
@@ -18,8 +19,8 @@ interface AuthContextType {
   session: Session | null;
   employee: Employee | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string, employeeCode: string) => Promise<void>;
+  signIn: (username: string, password: string) => Promise<void>;
+  signUp: (username: string, email: string, password: string, fullName: string, employeeCode: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -69,15 +70,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (username: string, password: string) => {
+    const { data: employeeData, error: employeeError } = await supabase
+      .from('employees')
+      .select('email')
+      .eq('username', username)
+      .maybeSingle();
+
+    if (employeeError || !employeeData) {
+      throw new Error('Invalid username or password');
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: employeeData.email,
       password,
     });
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, fullName: string, employeeCode: string) => {
+  const signUp = async (username: string, email: string, password: string, fullName: string, employeeCode: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -90,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         employee_code: employeeCode,
         full_name: fullName,
         email,
+        username,
         role: 'field_worker',
       });
       if (employeeError) throw employeeError;

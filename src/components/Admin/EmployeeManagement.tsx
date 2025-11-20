@@ -7,6 +7,7 @@ interface Employee {
   user_id: string | null;
   employee_code: string;
   full_name: string;
+  username: string;
   email: string;
   phone: string | null;
   role: 'field_supervisor' | 'manager' | 'field_worker' | 'admin' | 'intern' | 'office_employee';
@@ -22,6 +23,7 @@ export function EmployeeManagement() {
   const [formData, setFormData] = useState({
     full_name: '',
     employee_code: '',
+    username: '',
     email: '',
     phone: '',
     password: '',
@@ -72,6 +74,7 @@ export function EmployeeManagement() {
         body: JSON.stringify({
           full_name: formData.full_name,
           employee_code: formData.employee_code,
+          username: formData.username,
           email: formData.email,
           phone: formData.phone || null,
           password: password,
@@ -93,6 +96,7 @@ export function EmployeeManagement() {
         .update({
           full_name: formData.full_name,
           employee_code: formData.employee_code,
+          username: formData.username,
           email: formData.email,
           phone: formData.phone || null,
           role: formData.role,
@@ -105,7 +109,7 @@ export function EmployeeManagement() {
       }
     }
 
-    setFormData({ full_name: '', employee_code: '', email: '', phone: '', password: '', role: 'field_worker' });
+    setFormData({ full_name: '', employee_code: '', username: '', email: '', phone: '', password: '', role: 'field_worker' });
     setShowForm(false);
     setSelectedEmployee(null);
     fetchEmployees();
@@ -116,8 +120,10 @@ export function EmployeeManagement() {
     setFormData({
       full_name: employee.full_name,
       employee_code: employee.employee_code,
+      username: employee.username,
       email: employee.email,
       phone: employee.phone || '',
+      password: '',
       role: employee.role,
     });
     setShowForm(true);
@@ -227,7 +233,7 @@ export function EmployeeManagement() {
           onClick={() => {
             setShowForm(true);
             setSelectedEmployee(null);
-            setFormData({ full_name: '', employee_code: '', email: '', phone: '', password: '', role: 'field_worker' });
+            setFormData({ full_name: '', employee_code: '', username: '', email: '', phone: '', password: '', role: 'field_worker' });
           }}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
         >
@@ -274,6 +280,24 @@ export function EmployeeManagement() {
                   required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  required
+                  disabled={!!selectedEmployee}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="username-for-login"
+                />
+                {selectedEmployee && (
+                  <p className="mt-1 text-xs text-gray-500">Username cannot be changed after creation</p>
+                )}
               </div>
 
               <div>

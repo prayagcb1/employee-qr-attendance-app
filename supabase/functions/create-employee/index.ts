@@ -9,6 +9,7 @@ const corsHeaders = {
 interface CreateEmployeeRequest {
   full_name: string;
   employee_code: string;
+  username: string;
   email: string;
   phone: string | null;
   password: string;
@@ -58,6 +59,7 @@ Deno.serve(async (req: Request) => {
         user_id: authData.user.id,
         full_name: employeeData.full_name,
         employee_code: employeeData.employee_code,
+        username: employeeData.username,
         email: employeeData.email,
         phone: employeeData.phone,
         role: employeeData.role,
