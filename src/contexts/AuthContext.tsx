@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: employeeData, error: employeeError } = await supabase
       .from('employees')
       .select('email')
-      .eq('username', username)
+      .ilike('username', username)
       .maybeSingle();
 
     if (employeeError || !employeeData) {
