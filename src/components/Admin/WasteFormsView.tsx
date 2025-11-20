@@ -76,7 +76,19 @@ export function WasteFormsView() {
     const { data, error } = await query;
 
     if (!error && data) {
-      setForms(data);
+      const normalizedData = data.map(form => ({
+        ...form,
+        issues_identified: typeof form.issues_identified === 'string'
+          ? JSON.parse(form.issues_identified)
+          : (form.issues_identified || []),
+        composter_status: typeof form.composter_status === 'string'
+          ? JSON.parse(form.composter_status)
+          : (form.composter_status || {}),
+        scanned_bins: typeof form.scanned_bins === 'string'
+          ? JSON.parse(form.scanned_bins)
+          : (form.scanned_bins || [])
+      }));
+      setForms(normalizedData);
     }
     setLoading(false);
   };
