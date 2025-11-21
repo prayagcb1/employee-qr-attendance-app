@@ -47,8 +47,13 @@ export function EmployeeDashboard() {
     const { data, error } = await supabase
       .from('attendance_logs')
       .select(`
-        *,
-        sites (
+        id,
+        site_id,
+        event_type,
+        timestamp,
+        latitude,
+        longitude,
+        sites!inner (
           name,
           address
         )
@@ -149,7 +154,8 @@ export function EmployeeDashboard() {
           .select('id, name')
           .eq('qr_code_data', qrData)
           .eq('active', true)
-          .maybeSingle();
+          .limit(1)
+          .single();
 
         if (siteError || !site) {
           setMessage({ type: 'error', text: 'Invalid QR code or site not found' });

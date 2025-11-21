@@ -24,6 +24,8 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
       {
         highlightScanRegion: true,
         highlightCodeOutline: true,
+        maxScansPerSecond: 10,
+        preferredCamera: 'environment',
       }
     );
 

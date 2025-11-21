@@ -75,7 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('employees')
       .select('email')
       .ilike('username', username)
-      .maybeSingle();
+      .limit(1)
+      .single();
 
     if (employeeError || !employeeData) {
       throw new Error('Invalid username or password');
