@@ -346,7 +346,7 @@ export function EmployeeDashboard() {
               Scan QR Code to {currentStatus === 'clocked_out' ? 'Clock In' : 'Clock Out'}
             </button>
 
-            {(employee?.role === 'field_supervisor' || employee?.role === 'manager') && (
+            {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor' || employee?.role === 'manager') && (
               <button
                 onClick={() => setShowWasteForm(true)}
                 className="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-3"
