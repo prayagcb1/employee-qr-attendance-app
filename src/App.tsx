@@ -4,6 +4,8 @@ import { Login } from './components/Auth/Login';
 import { SignUp } from './components/Auth/SignUp';
 import { EmployeeDashboard } from './components/Employee/EmployeeDashboard';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { ManagerDashboard } from './components/Manager/ManagerDashboard';
+import { FieldSupervisorDashboard } from './components/FieldSupervisor/FieldSupervisorDashboard';
 
 function AppContent() {
   const { user, employee, loading } = useAuth();
@@ -30,6 +32,14 @@ function AppContent() {
 
   if (employee.role === 'admin') {
     return <AdminDashboard />;
+  }
+
+  if (employee.role === 'manager') {
+    return <ManagerDashboard />;
+  }
+
+  if (employee.role === 'field_supervisor') {
+    return <FieldSupervisorDashboard />;
   }
 
   return <EmployeeDashboard />;

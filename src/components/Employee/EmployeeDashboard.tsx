@@ -19,7 +19,11 @@ interface AttendanceLog {
   };
 }
 
-export function EmployeeDashboard() {
+interface EmployeeDashboardProps {
+  hideHeader?: boolean;
+}
+
+export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps = {}) {
   const { employee, signOut } = useAuth();
   const [showScanner, setShowScanner] = useState(false);
   const [showWasteForm, setShowWasteForm] = useState(false);
@@ -60,7 +64,7 @@ export function EmployeeDashboard() {
       `)
       .eq('employee_id', employee.id)
       .order('timestamp', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (!error && data) {
       const grouped: { [key: string]: any } = {};
@@ -69,19 +73,38 @@ export function EmployeeDashboard() {
         const date = log.timestamp.split('T')[0];
 
         if (!grouped[date]) {
-          grouped[date] = { date, clockIn: null, clockOut: null, site: log.sites };
+          grouped[date] = { date, entries: [], site: log.sites };
         }
 
-        if (log.event_type === 'clock_in') {
-          grouped[date].clockIn = log.timestamp;
-        } else {
-          grouped[date].clockOut = log.timestamp;
-        }
+        grouped[date].entries.push({
+          type: log.event_type,
+          timestamp: log.timestamp
+        });
       });
 
-      const groupedLogs = Object.values(grouped).sort((a: any, b: any) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      ).slice(0, 10);
+      const groupedLogs = Object.values(grouped)
+        .map((day: any) => {
+          const clockIns = day.entries.filter((e: any) => e.type === 'clock_in');
+          const clockOuts = day.entries.filter((e: any) => e.type === 'clock_out');
+
+          let totalMinutes = 0;
+          clockIns.forEach((clockIn: any, index: number) => {
+            const clockOut = clockOuts[index];
+            if (clockOut) {
+              const diff = new Date(clockOut.timestamp).getTime() - new Date(clockIn.timestamp).getTime();
+              totalMinutes += diff / 60000;
+            }
+          });
+
+          return {
+            ...day,
+            totalDuration: totalMinutes
+          };
+        })
+        .sort((a: any, b: any) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        )
+        .slice(0, 10);
 
       setLogs(groupedLogs);
     }
@@ -261,13 +284,21 @@ export function EmployeeDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-200">
+    <div className={hideHeader ? '' : 'min-h-screen bg-gray-50'}>
+      {!hideHeader && <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{employee?.full_name}</h1>
-              <p className="text-sm text-gray-600 mt-1">{employee?.employee_code}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-gray-600">{employee?.employee_code}</p>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                  {employee?.role === 'field_worker' && 'Field Worker'}
+                  {employee?.role === 'field_supervisor' && 'Field Supervisor'}
+                  {employee?.role === 'intern' && 'Intern'}
+                  {employee?.role === 'office_employee' && 'Office Employee'}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -287,9 +318,9 @@ export function EmployeeDashboard() {
             </div>
           </div>
         </div>
-      </header>
+      </header>}
 
-      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <main className={hideHeader ? '' : 'max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8'}>
         <div className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className={`p-6 rounded-xl shadow-sm col-span-1 md:col-span-2 ${
@@ -346,7 +377,7 @@ export function EmployeeDashboard() {
               Scan QR Code to {currentStatus === 'clocked_out' ? 'Clock In' : 'Clock Out'}
             </button>
 
-            {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor' || employee?.role === 'manager') && (
+            {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
               <button
                 onClick={() => setShowWasteForm(true)}
                 className="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-3"
@@ -382,39 +413,56 @@ export function EmployeeDashboard() {
                   key={log.date || index}
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-1">{log.site?.name}</h3>
-                      <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
+                      <p className="text-sm text-gray-600 flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
                         {log.site?.address}
                       </p>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-900 font-medium">{formatDate(log.date)}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 mt-3">
-                        <div className="flex items-center gap-2">
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                            Clock In
-                          </span>
-                          <span className="text-sm text-gray-900 flex items-center gap-1">
-                            <Clock className="w-4 h-4 text-gray-500" />
-                            {log.clockIn ? formatTime(log.clockIn) : '-'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
-                            Clock Out
-                          </span>
-                          <span className="text-sm text-gray-900 flex items-center gap-1">
-                            <Clock className="w-4 h-4 text-gray-500" />
-                            {log.clockOut ? formatTime(log.clockOut) : '-'}
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-900 font-medium">{formatDate(log.date)}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {log.entries.filter((e: any) => e.type === 'clock_in').map((entry: any, idx: number) => {
+                      const clockOut = log.entries.filter((e: any) => e.type === 'clock_out')[idx];
+                      return (
+                        <div key={idx} className="grid grid-cols-2 gap-4 p-2 bg-gray-50 rounded">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                              In
+                            </span>
+                            <span className="text-sm text-gray-900 flex items-center gap-1">
+                              <Clock className="w-4 h-4 text-gray-500" />
+                              {formatTime(entry.timestamp)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                              Out
+                            </span>
+                            <span className="text-sm text-gray-900 flex items-center gap-1">
+                              <Clock className="w-4 h-4 text-gray-500" />
+                              {clockOut ? formatTime(clockOut.timestamp) : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {log.totalDuration > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Total Duration:</span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {Math.floor(log.totalDuration / 60)}h {Math.round(log.totalDuration % 60)}m
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -96,12 +96,27 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     if (scannedBinsByStage.start_loaded.length > 0) workflowStage = 'start_loaded';
     if (scannedBinsByStage.harvest.length > 0) workflowStage = 'harvest';
 
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data: existingForm } = await supabase
+      .from('waste_management_forms')
+      .select('id')
+      .eq('site_id', selectedSiteId)
+      .eq('date', today)
+      .maybeSingle();
+
+    if (existingForm) {
+      setError('A waste form has already been submitted for this site today. Please choose a different site.');
+      setLoading(false);
+      return;
+    }
+
     const { error: submitError } = await supabase
       .from('waste_management_forms')
       .insert({
         employee_id: employee.id,
         community: selectedSiteName,
-        date: new Date().toISOString().split('T')[0],
+        date: today,
         recorded_by: employee.full_name,
         waste_segregated: formData.waste_segregated === 'yes',
         total_bins_50kg: parseInt(formData.total_bins_50kg),

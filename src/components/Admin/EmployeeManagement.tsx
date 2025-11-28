@@ -13,6 +13,7 @@ interface Employee {
   role: 'field_supervisor' | 'manager' | 'field_worker' | 'admin' | 'intern' | 'office_employee';
   active: boolean;
   created_at: string;
+  date_of_joining: string;
 }
 
 export function EmployeeManagement() {
@@ -431,6 +432,7 @@ export function EmployeeManagement() {
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Employee</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Contact</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Role</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Joined</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
               </tr>
@@ -467,6 +469,15 @@ export function EmployeeManagement() {
                     <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold w-fit ${getRoleBadgeColor(employee.role)}`}>
                       <Shield className="w-4 h-4" />
                       {employee.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="text-sm text-gray-600">
+                      {new Date(employee.date_of_joining).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
                     </span>
                   </td>
                   <td className="py-4 px-4">

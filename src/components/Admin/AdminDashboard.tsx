@@ -26,7 +26,12 @@ export function AdminDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-sm text-gray-600 mt-1">{employee?.full_name} - {employee?.employee_code}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-gray-600">{employee?.full_name} - {employee?.employee_code}</p>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                  Admin
+                </span>
+              </div>
             </div>
             <button
               onClick={signOut}
