@@ -27,6 +27,7 @@ export function EmployeeManagement() {
     email: '',
     phone: '',
     password: '',
+    date_of_joining: new Date().toISOString().split('T')[0],
     role: 'field_worker' as 'field_supervisor' | 'manager' | 'field_worker' | 'admin' | 'intern' | 'office_employee',
   });
   const [error, setError] = useState('');
@@ -75,9 +76,10 @@ export function EmployeeManagement() {
           full_name: formData.full_name,
           employee_code: formData.employee_code,
           username: formData.username,
-          email: formData.email,
+          email: formData.email.trim() || null,
           phone: formData.phone || null,
           password: password,
+          date_of_joining: formData.date_of_joining,
           role: formData.role,
         }),
       });
@@ -233,7 +235,7 @@ export function EmployeeManagement() {
           onClick={() => {
             setShowForm(true);
             setSelectedEmployee(null);
-            setFormData({ full_name: '', employee_code: '', username: '', email: '', phone: '', password: '', role: 'field_worker' });
+            setFormData({ full_name: '', employee_code: '', username: '', email: '', phone: '', password: '', date_of_joining: new Date().toISOString().split('T')[0], role: 'field_worker' });
           }}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
         >
@@ -361,6 +363,19 @@ export function EmployeeManagement() {
                   </p>
                 </div>
               )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date of Joining
+                </label>
+                <input
+                  type="date"
+                  value={formData.date_of_joining}
+                  onChange={(e) => setFormData({ ...formData, date_of_joining: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
