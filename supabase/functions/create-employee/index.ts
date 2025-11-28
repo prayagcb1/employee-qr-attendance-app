@@ -13,6 +13,7 @@ interface CreateEmployeeRequest {
   email: string | null;
   phone: string | null;
   password: string;
+  date_of_joining: string;
   role: 'field_worker' | 'supervisor' | 'admin' | 'intern' | 'office_employee';
 }
 
@@ -64,6 +65,7 @@ Deno.serve(async (req: Request) => {
         username: employeeData.username,
         email: employeeData.email || null,
         phone: employeeData.phone,
+        date_of_joining: employeeData.date_of_joining,
         role: employeeData.role,
         active: true,
       });
