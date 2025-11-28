@@ -4,8 +4,6 @@ import { supabase } from '../../lib/supabase';
 import { QRScanner } from '../Scanner/QRScanner';
 import { WasteManagementForm } from './WasteManagementForm';
 import { PasswordChangeForm } from './PasswordChangeForm';
-import { WasteFormsView } from './WasteFormsView';
-import { EmployeesList } from './EmployeesList';
 import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 
 interface AttendanceLog {
@@ -269,17 +267,7 @@ export function EmployeeDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{employee?.full_name}</h1>
-              <div className="flex items-center gap-3 mt-1">
-                <p className="text-sm text-gray-600">{employee?.employee_code}</p>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                  {employee?.role === 'field_worker' && 'Field Worker'}
-                  {employee?.role === 'field_supervisor' && 'Field Supervisor'}
-                  {employee?.role === 'manager' && 'Manager'}
-                  {employee?.role === 'admin' && 'Admin'}
-                  {employee?.role === 'intern' && 'Intern'}
-                  {employee?.role === 'office_employee' && 'Office Employee'}
-                </span>
-              </div>
+              <p className="text-sm text-gray-600 mt-1">{employee?.employee_code}</p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -358,7 +346,7 @@ export function EmployeeDashboard() {
               Scan QR Code to {currentStatus === 'clocked_out' ? 'Clock In' : 'Clock Out'}
             </button>
 
-            {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
+            {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor' || employee?.role === 'manager') && (
               <button
                 onClick={() => setShowWasteForm(true)}
                 className="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-3"
@@ -432,18 +420,6 @@ export function EmployeeDashboard() {
             </div>
           )}
         </div>
-
-        {(employee?.role === 'field_supervisor' || employee?.role === 'manager') && (
-          <div className="mt-8">
-            <WasteFormsView />
-          </div>
-        )}
-
-        {employee?.role === 'manager' && (
-          <div className="mt-8">
-            <EmployeesList />
-          </div>
-        )}
       </main>
 
       {showScanner && (

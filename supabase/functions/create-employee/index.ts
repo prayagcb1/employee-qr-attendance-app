@@ -10,7 +10,7 @@ interface CreateEmployeeRequest {
   full_name: string;
   employee_code: string;
   username: string;
-  email: string | null;
+  email: string;
   phone: string | null;
   password: string;
   role: 'field_worker' | 'supervisor' | 'admin' | 'intern' | 'office_employee';
@@ -32,17 +32,15 @@ Deno.serve(async (req: Request) => {
 
     const employeeData: CreateEmployeeRequest = await req.json();
 
-    const email = employeeData.email || `${employeeData.username}@temp.local`;
-
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users.find(u => u.email === email);
+    const existingUser = existingUsers?.users.find(u => u.email === employeeData.email);
 
     if (existingUser) {
       await supabaseAdmin.auth.admin.deleteUser(existingUser.id, true);
     }
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: email,
+      email: employeeData.email,
       password: employeeData.password,
       email_confirm: true,
     });
