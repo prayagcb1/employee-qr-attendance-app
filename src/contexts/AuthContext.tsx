@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (username: string, password: string) => {
     const { data: employeeData, error: employeeError } = await supabase
       .from('employees')
-      .select('email')
+      .select('email, username')
       .ilike('username', username)
       .limit(1)
       .single();
@@ -82,8 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Invalid username or password');
     }
 
+    const email = employeeData.email || `${employeeData.username}@temp.local`;
+
     const { error } = await supabase.auth.signInWithPassword({
-      email: employeeData.email,
+      email: email,
       password,
     });
     if (error) throw error;
