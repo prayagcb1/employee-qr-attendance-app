@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { LogOut, Users, ClipboardList, Lock } from 'lucide-react';
+import { LogOut, Users, ClipboardList, Lock, Clock } from 'lucide-react';
 import { PasswordChangeForm } from '../Employee/PasswordChangeForm';
 import { WasteFormsView } from '../Admin/WasteFormsView';
+import { EmployeeDashboard } from '../Employee/EmployeeDashboard';
 
 interface Employee {
   id: string;
@@ -20,7 +21,7 @@ interface Employee {
 export function ManagerDashboard() {
   const { employee, signOut } = useAuth();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'employees' | 'waste_forms'>('employees');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'employees' | 'waste_forms'>('attendance');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -116,10 +117,21 @@ export function ManagerDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <div className="flex gap-4 border-b border-gray-200">
+          <div className="flex gap-4 border-b border-gray-200 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('attendance')}
+              className={`px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'attendance'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Clock className="w-5 h-5" />
+              Attendance
+            </button>
             <button
               onClick={() => setActiveTab('employees')}
-              className={`px-4 py-3 font-medium transition flex items-center gap-2 ${
+              className={`px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'employees'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
@@ -130,7 +142,7 @@ export function ManagerDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('waste_forms')}
-              className={`px-4 py-3 font-medium transition flex items-center gap-2 ${
+              className={`px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'waste_forms'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
@@ -141,6 +153,8 @@ export function ManagerDashboard() {
             </button>
           </div>
         </div>
+
+        {activeTab === 'attendance' && <EmployeeDashboard hideHeader />}
 
         {activeTab === 'employees' && (
           <div className="bg-white rounded-xl shadow-sm p-6">

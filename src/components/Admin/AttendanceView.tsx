@@ -58,7 +58,10 @@ export function AttendanceView() {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
 
   useEffect(() => {

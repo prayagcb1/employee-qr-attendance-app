@@ -187,37 +187,6 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
 
         const eventType = currentStatus === 'clocked_out' ? 'clock_in' : 'clock_out';
 
-        if (eventType === 'clock_out' && currentSiteId && currentSiteId !== site.id) {
-          setMessage({
-            type: 'error',
-            text: 'You must clock out at the same site where you clocked in'
-          });
-          return;
-        }
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const { data: existingLog } = await supabase
-          .from('attendance_logs')
-          .select('id, event_type')
-          .eq('employee_id', employee.id)
-          .eq('event_type', eventType)
-          .gte('timestamp', today.toISOString())
-          .lt('timestamp', tomorrow.toISOString())
-          .maybeSingle();
-
-        if (existingLog) {
-          const action = eventType === 'clock_in' ? 'clocked in' : 'clocked out';
-          setMessage({
-            type: 'error',
-            text: `You have already ${action} today. You can only ${action.replace('ed', '')} once per day.`
-          });
-          return;
-        }
-
         const { error: logError } = await supabase.from('attendance_logs').insert({
           employee_id: employee.id,
           site_id: site.id,
@@ -453,7 +422,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
                       );
                     })}
                   </div>
-                  {log.totalDuration > 0 && (
+                  {log.totalDuration > 0 && employee?.role === 'admin' && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">Total Duration:</span>
