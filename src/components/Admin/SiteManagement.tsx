@@ -101,14 +101,47 @@ export function SiteManagement() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this site?')) return;
+    if (!confirm('Are you sure you want to delete this site? This will also delete all associated attendance logs, bins, and waste forms.')) return;
+
+    const { error: attendanceError } = await supabase
+      .from('attendance_logs')
+      .delete()
+      .eq('site_id', id);
+
+    if (attendanceError) {
+      alert(`Failed to delete site: ${attendanceError.message}`);
+      return;
+    }
+
+    const { error: binsError } = await supabase
+      .from('bins')
+      .delete()
+      .eq('site_id', id);
+
+    if (binsError) {
+      alert(`Failed to delete site: ${binsError.message}`);
+      return;
+    }
+
+    const { error: wasteFormsError } = await supabase
+      .from('waste_management_forms')
+      .delete()
+      .eq('site_id', id);
+
+    if (wasteFormsError) {
+      alert(`Failed to delete site: ${wasteFormsError.message}`);
+      return;
+    }
 
     const { error } = await supabase
       .from('sites')
       .delete()
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      alert(`Failed to delete site: ${error.message}`);
+    } else {
+      alert('Site and all associated data deleted successfully');
       fetchSites();
     }
   };
