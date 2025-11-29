@@ -32,6 +32,7 @@ interface WasteForm {
 export function WasteFormsView() {
   const [forms, setForms] = useState<WasteForm[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedForm, setExpandedForm] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     community: '',
@@ -73,10 +74,11 @@ export function WasteFormsView() {
       query = query.eq('recorded_by', filters.recordedBy);
     }
 
-    const { data, error } = await query;
+    const { data, error: fetchError } = await query;
 
-    if (error) {
-      console.error('Error fetching waste forms:', error);
+    if (fetchError) {
+      console.error('Error fetching waste forms:', fetchError);
+      setError(`Failed to load waste forms: ${fetchError.message}`);
       setForms([]);
     } else if (data) {
       try {
@@ -93,10 +95,15 @@ export function WasteFormsView() {
             : (form.scanned_bins || [])
         }));
         setForms(normalizedData);
+        setError(null);
       } catch (err) {
         console.error('Error normalizing data:', err);
+        setError('Failed to process waste forms data');
         setForms([]);
       }
+    } else {
+      setForms([]);
+      setError(null);
     }
     setLoading(false);
   };
@@ -245,10 +252,19 @@ export function WasteFormsView() {
         </div>
       )}
 
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+          <p className="font-medium">Error:</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-12 text-gray-500">Loading forms...</div>
       ) : forms.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">No forms submitted yet</div>
+        <div className="text-center py-12 text-gray-500">
+          {error ? 'Unable to load forms' : 'No forms submitted yet'}
+        </div>
       ) : (
         <div className="space-y-4">
           {forms.map((form) => (

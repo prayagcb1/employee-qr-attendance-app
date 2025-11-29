@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { QRScanner } from '../Scanner/QRScanner';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Camera, CheckCircle, XCircle } from 'lucide-react';
 
 interface Message {
@@ -9,6 +10,7 @@ interface Message {
 }
 
 export function QRAttendanceScanner() {
+  const { employee: loggedInEmployee } = useAuth();
   const [showScanner, setShowScanner] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -42,24 +44,17 @@ export function QRAttendanceScanner() {
             return;
           }
 
-          const employeeCode = prompt('Enter Employee Code:');
-          if (!employeeCode) {
-            setMessage({ type: 'error', text: 'Employee code is required' });
+          if (!loggedInEmployee) {
+            setMessage({ type: 'error', text: 'Employee information not found' });
             setProcessing(false);
             return;
           }
 
-          const { data: employee, error: empError } = await supabase
-            .from('employees')
-            .select('id, full_name, active')
-            .eq('employee_code', employeeCode)
-            .maybeSingle();
-
-          if (empError || !employee) {
-            setMessage({ type: 'error', text: 'Employee not found' });
-            setProcessing(false);
-            return;
-          }
+          const employee = {
+            id: loggedInEmployee.id,
+            full_name: loggedInEmployee.full_name,
+            active: loggedInEmployee.active
+          };
 
           if (!employee.active) {
             setMessage({ type: 'error', text: 'Employee is not active' });
@@ -132,37 +127,42 @@ export function QRAttendanceScanner() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
+    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
       <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">QR Attendance Scanner</h2>
-          <p className="text-gray-600">Scan employee QR code to mark attendance</p>
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">QR Attendance Scanner</h2>
+          <p className="text-sm sm:text-base text-gray-600">Scan site QR code to mark your attendance</p>
+          {loggedInEmployee && (
+            <p className="text-xs sm:text-sm text-gray-500 mt-2">
+              Scanning for: {loggedInEmployee.full_name} ({loggedInEmployee.employee_code})
+            </p>
+          )}
         </div>
 
         {message && (
           <div
-            className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
+            className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg flex items-start gap-2 sm:gap-3 ${
               message.type === 'success'
                 ? 'bg-green-50 text-green-800 border border-green-200'
                 : 'bg-red-50 text-red-800 border border-red-200'
             }`}
           >
             {message.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             ) : (
-              <XCircle className="w-5 h-5 flex-shrink-0" />
+              <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             )}
-            <p className="font-medium">{message.text}</p>
+            <p className="font-medium text-sm sm:text-base">{message.text}</p>
           </div>
         )}
 
-        <div className="flex justify-center">
+        <div className="flex justify-center mb-6 sm:mb-8">
           <button
             onClick={() => setShowScanner(true)}
             disabled={processing}
-            className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold rounded-lg shadow-lg transition transform hover:scale-105 disabled:transform-none"
+            className="flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold rounded-lg shadow-lg transition transform hover:scale-105 disabled:transform-none text-sm sm:text-base w-full sm:w-auto"
           >
-            <Camera className="w-6 h-6" />
+            <Camera className="w-5 h-5 sm:w-6 sm:h-6" />
             {processing ? 'Processing...' : 'Scan QR Code'}
           </button>
         </div>
@@ -174,13 +174,13 @@ export function QRAttendanceScanner() {
           />
         )}
 
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-          <h3 className="font-semibold text-gray-900 mb-2">Instructions:</h3>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
+        <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-gray-50 rounded-lg">
+          <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Instructions:</h3>
+          <ol className="list-decimal list-inside space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-600">
             <li>Click the "Scan QR Code" button</li>
             <li>Point camera at the site QR code</li>
-            <li>Enter the employee code when prompted</li>
-            <li>System will automatically mark clock in or clock out</li>
+            <li>System will automatically detect clock in or clock out</li>
+            <li>Your attendance will be recorded with location</li>
           </ol>
         </div>
       </div>
