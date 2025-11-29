@@ -185,7 +185,36 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
           return;
         }
 
+        const today = new Date().toISOString().split('T')[0];
+
+        const { data: todayLogs } = await supabase
+          .from('attendance_logs')
+          .select('site_id, event_type')
+          .eq('employee_id', employee.id)
+          .gte('timestamp', today)
+          .lt('timestamp', `${today}T23:59:59.999Z`)
+          .order('timestamp', { ascending: false });
+
+        if (todayLogs && todayLogs.length > 0) {
+          const firstSiteId = todayLogs[todayLogs.length - 1].site_id;
+          if (site.id !== firstSiteId) {
+            setMessage({
+              type: 'error',
+              text: 'You can only clock in/out at one site per day. You already have entries for a different site today.'
+            });
+            return;
+          }
+        }
+
         const eventType = currentStatus === 'clocked_out' ? 'clock_in' : 'clock_out';
+
+        if (eventType === 'clock_out' && currentSiteId && currentSiteId !== site.id) {
+          setMessage({
+            type: 'error',
+            text: 'You must clock out at the same site where you clocked in'
+          });
+          return;
+        }
 
         const { error: logError } = await supabase.from('attendance_logs').insert({
           employee_id: employee.id,

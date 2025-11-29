@@ -29,19 +29,22 @@ interface AttendanceSession {
   date: string;
   siteName: string;
   siteAddress: string;
-  clockIn: {
-    time: string;
-    latitude: number;
-    longitude: number;
-    address?: string;
-  } | null;
-  clockOut: {
-    time: string;
-    latitude: number;
-    longitude: number;
-    address?: string;
-  } | null;
-  duration: string | null;
+  entries: Array<{
+    clockIn: {
+      time: string;
+      latitude: number;
+      longitude: number;
+      address?: string;
+    } | null;
+    clockOut: {
+      time: string;
+      latitude: number;
+      longitude: number;
+      address?: string;
+    } | null;
+    duration: string | null;
+  }>;
+  totalDuration: string | null;
 }
 
 interface MonthlyStats {
@@ -186,7 +189,11 @@ export function AttendanceView() {
   const groupLogsIntoSessions = async (logs: AttendanceLog[]) => {
     const sessionMap = new Map<string, AttendanceSession>();
 
-    logs.forEach(log => {
+    const sortedLogs = [...logs].sort((a, b) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    sortedLogs.forEach(log => {
       const date = new Date(log.timestamp).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -199,37 +206,57 @@ export function AttendanceView() {
           date,
           siteName: log.sites.name,
           siteAddress: log.sites.address,
-          clockIn: null,
-          clockOut: null,
-          duration: null,
+          entries: [],
+          totalDuration: null,
         });
       }
 
       const session = sessionMap.get(key)!;
 
       if (log.event_type === 'clock_in') {
-        session.clockIn = {
-          time: log.timestamp,
-          latitude: log.latitude,
-          longitude: log.longitude,
-          address: 'Loading...',
-        };
-      } else {
-        session.clockOut = {
-          time: log.timestamp,
-          latitude: log.latitude,
-          longitude: log.longitude,
-          address: 'Loading...',
-        };
-      }
+        session.entries.push({
+          clockIn: {
+            time: log.timestamp,
+            latitude: log.latitude,
+            longitude: log.longitude,
+            address: 'Loading...',
+          },
+          clockOut: null,
+          duration: null,
+        });
+      } else if (log.event_type === 'clock_out') {
+        const lastEntry = session.entries[session.entries.length - 1];
+        if (lastEntry && lastEntry.clockIn && !lastEntry.clockOut) {
+          lastEntry.clockOut = {
+            time: log.timestamp,
+            latitude: log.latitude,
+            longitude: log.longitude,
+            address: 'Loading...',
+          };
 
-      if (session.clockIn && session.clockOut) {
-        const clockInTime = new Date(session.clockIn.time).getTime();
-        const clockOutTime = new Date(session.clockOut.time).getTime();
-        const durationMs = clockOutTime - clockInTime;
-        const hours = Math.floor(durationMs / (1000 * 60 * 60));
-        const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-        session.duration = `${hours}h ${minutes}m`;
+          const clockInTime = new Date(lastEntry.clockIn.time).getTime();
+          const clockOutTime = new Date(lastEntry.clockOut.time).getTime();
+          const durationMs = clockOutTime - clockInTime;
+          const hours = Math.floor(durationMs / (1000 * 60 * 60));
+          const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+          lastEntry.duration = `${hours}h ${minutes}m`;
+        }
+      }
+    });
+
+    sessionMap.forEach(session => {
+      let totalMs = 0;
+      session.entries.forEach(entry => {
+        if (entry.clockIn && entry.clockOut) {
+          const clockInTime = new Date(entry.clockIn.time).getTime();
+          const clockOutTime = new Date(entry.clockOut.time).getTime();
+          totalMs += clockOutTime - clockInTime;
+        }
+      });
+      if (totalMs > 0) {
+        const hours = Math.floor(totalMs / (1000 * 60 * 60));
+        const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
+        session.totalDuration = `${hours}h ${minutes}m`;
       }
     });
 
@@ -237,21 +264,23 @@ export function AttendanceView() {
     setSessions(sessionsArray);
 
     const addressPromises: Promise<void>[] = [];
-    sessionsArray.forEach((session, index) => {
-      if (session.clockIn) {
-        addressPromises.push(
-          getAddressFromCoordinates(session.clockIn.latitude, session.clockIn.longitude).then(address => {
-            sessionsArray[index].clockIn!.address = address;
-          })
-        );
-      }
-      if (session.clockOut) {
-        addressPromises.push(
-          getAddressFromCoordinates(session.clockOut.latitude, session.clockOut.longitude).then(address => {
-            sessionsArray[index].clockOut!.address = address;
-          })
-        );
-      }
+    sessionsArray.forEach((session, sessionIndex) => {
+      session.entries.forEach((entry, entryIndex) => {
+        if (entry.clockIn) {
+          addressPromises.push(
+            getAddressFromCoordinates(entry.clockIn.latitude, entry.clockIn.longitude).then(address => {
+              sessionsArray[sessionIndex].entries[entryIndex].clockIn!.address = address;
+            })
+          );
+        }
+        if (entry.clockOut) {
+          addressPromises.push(
+            getAddressFromCoordinates(entry.clockOut.latitude, entry.clockOut.longitude).then(address => {
+              sessionsArray[sessionIndex].entries[entryIndex].clockOut!.address = address;
+            })
+          );
+        }
+      });
     });
 
     Promise.all(addressPromises).then(() => {
@@ -426,90 +455,80 @@ export function AttendanceView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sessions.map((session, index) => (
-                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4">
+                  {sessions.map((session, sessionIndex) => (
+                    <tr key={sessionIndex} className="border-b border-gray-200">
+                      <td className="py-4 px-4 align-top">
                         <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
                           <Calendar className="w-4 h-4" />
                           {session.date}
                         </p>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 align-top">
                         <div>
                           <p className="font-medium text-gray-900">{session.siteName}</p>
                           <p className="text-xs text-gray-500">{session.siteAddress}</p>
                         </div>
                       </td>
-                      <td className="py-4 px-4">
-                        {session.clockIn ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">
-                                Clock In
-                              </span>
-                              <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
-                                <Clock className="w-4 h-4 text-green-600" />
-                                {formatTime(session.clockIn.time)}
-                              </p>
-                            </div>
-                            <div className="flex items-start gap-1 text-xs text-gray-600">
-                              <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <td className="py-4 px-4 align-top" colSpan={3}>
+                        <div className="space-y-3">
+                          {session.entries.map((entry, entryIndex) => (
+                            <div key={entryIndex} className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
                               <div>
-                                <p className="mb-1">{session.clockIn.address}</p>
-                                <a
-                                  href={`https://www.google.com/maps?q=${session.clockIn.latitude},${session.clockIn.longitude}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-700 underline"
-                                >
-                                  View on Map
-                                </a>
+                                {entry.clockIn ? (
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold whitespace-nowrap">
+                                        In
+                                      </span>
+                                      <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
+                                        <Clock className="w-4 h-4 text-green-600" />
+                                        {formatTime(entry.clockIn.time)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 text-sm">-</span>
+                                )}
+                              </div>
+                              <div>
+                                {entry.clockOut ? (
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold whitespace-nowrap">
+                                        Out
+                                      </span>
+                                      <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
+                                        <Clock className="w-4 h-4 text-red-600" />
+                                        {formatTime(entry.clockOut.time)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-orange-600 text-sm font-medium">Active</span>
+                                )}
+                              </div>
+                              <div className="flex items-center">
+                                {entry.duration ? (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold whitespace-nowrap">
+                                    {entry.duration}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 text-sm">-</span>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        {session.clockOut ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold">
-                                Clock Out
-                              </span>
-                              <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
-                                <Clock className="w-4 h-4 text-red-600" />
-                                {formatTime(session.clockOut.time)}
-                              </p>
-                            </div>
-                            <div className="flex items-start gap-1 text-xs text-gray-600">
-                              <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="mb-1">{session.clockOut.address}</p>
-                                <a
-                                  href={`https://www.google.com/maps?q=${session.clockOut.latitude},${session.clockOut.longitude}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-700 underline"
-                                >
-                                  View on Map
-                                </a>
+                          ))}
+                          {session.totalDuration && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold text-gray-700">Total Duration:</span>
+                                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-bold">
+                                  {session.totalDuration}
+                                </span>
                               </div>
                             </div>
-                          </div>
-                        ) : (
-                          <span className="text-orange-600 text-sm font-medium">Active</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        {session.duration ? (
-                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
-                            {session.duration}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

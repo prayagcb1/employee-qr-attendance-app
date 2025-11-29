@@ -166,33 +166,36 @@ export function ManagerDashboard() {
               <div className="text-center py-8 text-gray-500">No employees found</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-max">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Code</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Username</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Contact</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Role</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Joined</th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Code</th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider hidden sm:table-cell">Username</th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider hidden md:table-cell">Contact</th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
+                      <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">Joined</th>
                     </tr>
                   </thead>
                   <tbody>
                     {employees.map((emp) => (
                       <tr key={emp.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium text-gray-900">{emp.full_name}</td>
-                        <td className="py-3 px-4 text-gray-600">{emp.employee_code}</td>
-                        <td className="py-3 px-4 text-gray-600">{emp.username}</td>
-                        <td className="py-3 px-4 text-gray-600">
-                          {emp.email && <div className="text-sm">{emp.email}</div>}
-                          {emp.phone && <div className="text-sm">{emp.phone}</div>}
+                        <td className="py-3 px-2 sm:px-4">
+                          <div className="font-medium text-gray-900 text-sm">{emp.full_name}</div>
+                          <div className="text-xs text-gray-500 sm:hidden">{emp.username}</div>
                         </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(emp.role)}`}>
+                        <td className="py-3 px-2 sm:px-4 text-gray-600 text-sm">{emp.employee_code}</td>
+                        <td className="py-3 px-2 sm:px-4 text-gray-600 text-sm hidden sm:table-cell">{emp.username}</td>
+                        <td className="py-3 px-2 sm:px-4 text-gray-600 hidden md:table-cell">
+                          {emp.email && <div className="text-xs">{emp.email}</div>}
+                          {emp.phone && <div className="text-xs">{emp.phone}</div>}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getRoleBadgeColor(emp.role)}`}>
                             {formatRole(emp.role)}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-gray-600 text-sm">
+                        <td className="py-3 px-2 text-gray-600 text-xs whitespace-nowrap">
                           {formatDate(emp.date_of_joining)}
                         </td>
                       </tr>
