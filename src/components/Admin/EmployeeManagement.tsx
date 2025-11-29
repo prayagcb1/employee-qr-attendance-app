@@ -474,7 +474,7 @@ export function EmployeeManagement() {
                   <td className="py-4 px-2 whitespace-nowrap">
                     <span className="text-xs text-gray-600">
                       {new Date(employee.date_of_joining).toLocaleDateString('en-US', {
-                        year: '2-digit',
+                        year: 'numeric',
                         month: 'short',
                         day: 'numeric'
                       })}
@@ -493,39 +493,36 @@ export function EmployeeManagement() {
                     <div className="flex items-center gap-1 flex-wrap">
                       <button
                         onClick={() => handleEdit(employee)}
-                        className="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded transition text-xs"
+                        className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition"
                         title="Edit"
                       >
-                        <Edit className="w-3 h-3" />
-                        <span className="hidden sm:inline">Edit</span>
+                        <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => resetPassword(employee)}
                         disabled={!employee.user_id}
-                        className="flex items-center gap-1 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-100 disabled:text-gray-400 text-blue-700 px-2 py-1 rounded transition text-xs"
+                        className="p-2 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-100 disabled:text-gray-400 text-blue-700 rounded transition"
                         title="Reset Password"
                       >
-                        <KeyRound className="w-3 h-3" />
-                        <span className="hidden sm:inline">Reset</span>
+                        <KeyRound className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => toggleActive(employee)}
-                        className={`px-2 py-1 rounded transition text-xs ${
+                        className={`p-2 rounded transition ${
                           employee.active
                             ? 'bg-orange-100 hover:bg-orange-200 text-orange-700'
                             : 'bg-green-100 hover:bg-green-200 text-green-700'
                         }`}
                         title={employee.active ? 'Disable' : 'Enable'}
                       >
-                        {employee.active ? 'Disable' : 'Enable'}
+                        {employee.active ? '✕' : '✓'}
                       </button>
                       <button
                         onClick={() => handleDelete(employee)}
-                        className="flex items-center gap-1 bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded transition text-xs"
+                        className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded transition"
                         title="Delete"
                       >
-                        <Trash2 className="w-3 h-3" />
-                        <span className="hidden sm:inline">Delete</span>
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

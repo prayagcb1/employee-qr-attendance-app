@@ -470,50 +470,78 @@ export function AttendanceView() {
                         </div>
                       </td>
                       <td className="py-4 px-4 align-top" colSpan={3}>
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           {session.entries.map((entry, entryIndex) => (
-                            <div key={entryIndex} className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
-                              <div>
-                                {entry.clockIn ? (
-                                  <div className="space-y-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold whitespace-nowrap">
-                                        In
-                                      </span>
-                                      <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
-                                        <Clock className="w-4 h-4 text-green-600" />
-                                        {formatTime(entry.clockIn.time)}
-                                      </p>
+                            <div key={entryIndex} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-2 border-b border-gray-200 last:border-0">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  {entry.clockIn ? (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold whitespace-nowrap">
+                                          Clock In
+                                        </span>
+                                        <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
+                                          <Clock className="w-4 h-4 text-green-600" />
+                                          {formatTime(entry.clockIn.time)}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-start gap-1 text-xs text-gray-600 mt-2">
+                                        <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                          <p className="mb-1 line-clamp-2">{entry.clockIn.address}</p>
+                                          <a
+                                            href={`https://www.google.com/maps?q=${entry.clockIn.latitude},${entry.clockIn.longitude}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:text-blue-700 underline"
+                                          >
+                                            View on Map
+                                          </a>
+                                        </div>
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400 text-sm">-</span>
-                                )}
-                              </div>
-                              <div>
-                                {entry.clockOut ? (
-                                  <div className="space-y-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold whitespace-nowrap">
-                                        Out
-                                      </span>
-                                      <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
-                                        <Clock className="w-4 h-4 text-red-600" />
-                                        {formatTime(entry.clockOut.time)}
-                                      </p>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">-</span>
+                                  )}
+                                </div>
+                                <div>
+                                  {entry.clockOut ? (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold whitespace-nowrap">
+                                          Clock Out
+                                        </span>
+                                        <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
+                                          <Clock className="w-4 h-4 text-red-600" />
+                                          {formatTime(entry.clockOut.time)}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-start gap-1 text-xs text-gray-600 mt-2">
+                                        <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                          <p className="mb-1 line-clamp-2">{entry.clockOut.address}</p>
+                                          <a
+                                            href={`https://www.google.com/maps?q=${entry.clockOut.latitude},${entry.clockOut.longitude}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:text-blue-700 underline"
+                                          >
+                                            View on Map
+                                          </a>
+                                        </div>
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <span className="text-orange-600 text-sm font-medium">Active</span>
-                                )}
+                                  ) : (
+                                    <span className="text-orange-600 text-sm font-medium">Active</span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex items-center">
-                                {entry.duration ? (
-                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold whitespace-nowrap">
+                              <div className="flex items-center justify-center md:justify-end">
+                                {entry.duration && (
+                                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded text-sm font-semibold whitespace-nowrap">
                                     {entry.duration}
                                   </span>
-                                ) : (
-                                  <span className="text-gray-400 text-sm">-</span>
                                 )}
                               </div>
                             </div>
