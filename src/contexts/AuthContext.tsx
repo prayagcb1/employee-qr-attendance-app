@@ -76,9 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('email, username')
       .ilike('username', username)
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (employeeError || !employeeData) {
+    if (employeeError) {
+      console.error('Employee lookup error:', employeeError);
+      throw new Error('Unable to verify credentials. Please try again.');
+    }
+
+    if (!employeeData) {
       throw new Error('Invalid username or password');
     }
 
@@ -88,7 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: email,
       password,
     });
-    if (error) throw error;
+
+    if (error) {
+      console.error('Auth error:', error);
+      throw new Error('Invalid username or password');
+    }
   };
 
   const signUp = async (username: string, email: string, password: string, fullName: string, employeeCode: string) => {
