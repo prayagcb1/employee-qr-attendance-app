@@ -4,9 +4,10 @@ import { AttendanceView } from './AttendanceView';
 import { SiteManagement } from './SiteManagement';
 import { EmployeeManagement } from './EmployeeManagement';
 import { WasteFormsView } from './WasteFormsView';
-import { LogOut, Users, MapPin, Clock, ClipboardList } from 'lucide-react';
+import { QRAttendanceScanner } from './QRAttendanceScanner';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode } from 'lucide-react';
 
-type Tab = 'attendance' | 'sites' | 'employees' | 'waste-forms';
+type Tab = 'attendance' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms';
 
 export function AdminDashboard() {
   const { employee, signOut } = useAuth();
@@ -14,6 +15,7 @@ export function AdminDashboard() {
 
   const tabs = [
     { id: 'attendance' as Tab, label: 'Attendance', icon: Clock },
+    { id: 'qr-scanner' as Tab, label: 'QR Scanner', icon: QrCode },
     { id: 'sites' as Tab, label: 'Sites', icon: MapPin },
     { id: 'employees' as Tab, label: 'Employees', icon: Users },
     { id: 'waste-forms' as Tab, label: 'Waste Forms', icon: ClipboardList },
@@ -66,6 +68,7 @@ export function AdminDashboard() {
 
         <div>
           {activeTab === 'attendance' && <AttendanceView />}
+          {activeTab === 'qr-scanner' && <QRAttendanceScanner />}
           {activeTab === 'sites' && <SiteManagement />}
           {activeTab === 'employees' && <EmployeeManagement />}
           {activeTab === 'waste-forms' && <WasteFormsView />}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Calendar, Clock, MapPin, User, ChevronRight, ArrowLeft, CalendarCheck, RefreshCw } from 'lucide-react';
 
@@ -340,10 +340,12 @@ export function AttendanceView() {
     return `${year}-${month}`;
   };
 
-  const filteredEmployees = employees.filter(emp =>
-    emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(emp =>
+      emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [employees, searchTerm]);
 
   if (selectedEmployee) {
     return (
