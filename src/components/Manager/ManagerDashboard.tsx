@@ -25,22 +25,22 @@ export function ManagerDashboard() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Manager Dashboard</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm text-gray-600">{employee?.full_name} - {employee?.employee_code}</p>
-                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Manager Dashboard</h1>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <p className="text-xs sm:text-sm text-gray-600 truncate">{employee?.full_name} - {employee?.employee_code}</p>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 whitespace-nowrap">
                   Manager
                 </span>
               </div>
             </div>
             <button
               onClick={signOut}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
             >
               <LogOut className="w-5 h-5" />
-              <span className="font-medium">Sign Out</span>
+              <span className="hidden sm:inline font-medium">Sign Out</span>
             </button>
           </div>
         </div>
@@ -53,14 +53,14 @@ export function ManagerDashboard() {
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-2 px-6 py-4 font-medium transition relative whitespace-nowrap ${
+                className={`flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 font-medium transition relative whitespace-nowrap ${
                   activeTab === id
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                {label}
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-sm sm:text-base">{label}</span>
               </button>
             ))}
           </nav>
