@@ -177,8 +177,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
           .select('id, name')
           .eq('qr_code_data', qrData)
           .eq('active', true)
-          .limit(1)
-          .single();
+          .maybeSingle();
 
         if (siteError || !site) {
           setMessage({ type: 'error', text: 'Invalid QR code or site not found' });
