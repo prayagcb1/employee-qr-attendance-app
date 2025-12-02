@@ -156,7 +156,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
 
   const handleScan = async (qrData: string) => {
     setShowScanner(false);
-    setMessage(null);
+    setMessage({ type: 'success', text: 'Processing...' });
 
     if (!employee) {
       setMessage({ type: 'error', text: 'Employee information not found' });
@@ -164,79 +164,69 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
     }
 
     if (!navigator.geolocation) {
-      setMessage({ type: 'error', text: 'Geolocation is not supported by your browser' });
+      setMessage({ type: 'error', text: 'Geolocation is not supported' });
       return;
     }
 
+    const geolocationOptions = {
+      enableHighAccuracy: false,
+      timeout: 5000,
+      maximumAge: 30000
+    };
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const { latitude, longitude } = position.coords;
+        try {
+          const { latitude, longitude } = position.coords;
 
-        const { data: site, error: siteError } = await supabase
-          .from('sites')
-          .select('id, name')
-          .eq('qr_code_data', qrData)
-          .eq('active', true)
-          .maybeSingle();
+          const { data: site, error: siteError } = await supabase
+            .from('sites')
+            .select('id, name')
+            .eq('qr_code_data', qrData)
+            .eq('active', true)
+            .maybeSingle();
 
-        if (siteError || !site) {
-          setMessage({ type: 'error', text: 'Invalid QR code or site not found' });
-          return;
-        }
-
-        const today = new Date().toISOString().split('T')[0];
-
-        const { data: todayLogs } = await supabase
-          .from('attendance_logs')
-          .select('site_id, event_type')
-          .eq('employee_id', employee.id)
-          .gte('timestamp', today)
-          .lt('timestamp', `${today}T23:59:59.999Z`)
-          .order('timestamp', { ascending: false });
-
-        if (todayLogs && todayLogs.length > 0) {
-          const firstSiteId = todayLogs[todayLogs.length - 1].site_id;
-          if (site.id !== firstSiteId) {
-            setMessage({
-              type: 'error',
-              text: 'You can only clock in/out at one site per day. You already have entries for a different site today.'
-            });
+          if (siteError || !site) {
+            setMessage({ type: 'error', text: 'Invalid QR code' });
             return;
           }
-        }
 
-        const eventType = currentStatus === 'clocked_out' ? 'clock_in' : 'clock_out';
+          const eventType = currentStatus === 'clocked_out' ? 'clock_in' : 'clock_out';
 
-        if (eventType === 'clock_out' && currentSiteId && currentSiteId !== site.id) {
-          setMessage({
-            type: 'error',
-            text: 'You must clock out at the same site where you clocked in'
+          if (eventType === 'clock_out' && currentSiteId && currentSiteId !== site.id) {
+            setMessage({ type: 'error', text: 'Clock out at same site' });
+            return;
+          }
+
+          const { error: logError } = await supabase.from('attendance_logs').insert({
+            employee_id: employee.id,
+            site_id: site.id,
+            event_type: eventType,
+            latitude,
+            longitude,
           });
-          return;
-        }
 
-        const { error: logError } = await supabase.from('attendance_logs').insert({
-          employee_id: employee.id,
-          site_id: site.id,
-          event_type: eventType,
-          latitude,
-          longitude,
-        });
-
-        if (logError) {
-          setMessage({ type: 'error', text: 'Failed to log attendance' });
-        } else {
-          const action = eventType === 'clock_in' ? 'Clocked in' : 'Clocked out';
-          setMessage({ type: 'success', text: `${action} at ${site.name}` });
-          setCurrentStatus(eventType === 'clock_in' ? 'clocked_in' : 'clocked_out');
-          setCurrentSiteId(eventType === 'clock_in' ? site.id : null);
-          fetchLogs();
-          fetchMonthlyStats();
+          if (logError) {
+            console.error('Attendance log error:', logError);
+            setMessage({ type: 'error', text: 'Failed to log attendance' });
+          } else {
+            const action = eventType === 'clock_in' ? 'Clocked In' : 'Clocked Out';
+            setMessage({ type: 'success', text: `${action} at ${site.name}` });
+            setCurrentStatus(eventType === 'clock_in' ? 'clocked_in' : 'clocked_out');
+            setCurrentSiteId(eventType === 'clock_in' ? site.id : null);
+            fetchLogs();
+            fetchMonthlyStats();
+          }
+        } catch (err) {
+          console.error('Scan error:', err);
+          setMessage({ type: 'error', text: 'Failed to process scan' });
         }
       },
-      () => {
-        setMessage({ type: 'error', text: 'Unable to get your location. Please enable location services.' });
-      }
+      (error) => {
+        console.error('Geolocation error:', error);
+        setMessage({ type: 'error', text: 'Enable location services' });
+      },
+      geolocationOptions
     );
   };
 
@@ -284,12 +274,12 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
     <div className={hideHeader ? '' : 'min-h-screen bg-gray-50'}>
       {!hideHeader && <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{employee?.full_name}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm text-gray-600">{employee?.employee_code}</p>
-                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{employee?.full_name}</h1>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <p className="text-xs sm:text-sm text-gray-600">{employee?.employee_code}</p>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 whitespace-nowrap">
                   {employee?.role === 'field_worker' && 'Field Worker'}
                   {employee?.role === 'field_supervisor' && 'Field Supervisor'}
                   {employee?.role === 'intern' && 'Intern'}
@@ -297,57 +287,60 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowPasswordForm(true)}
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                title="Change Password"
               >
                 <Lock className="w-5 h-5" />
-                <span className="font-medium">Change Password</span>
+                <span className="hidden sm:inline font-medium">Change Password</span>
               </button>
               <button
                 onClick={signOut}
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                title="Sign Out"
               >
                 <LogOut className="w-5 h-5" />
-                <span className="font-medium">Sign Out</span>
+                <span className="hidden sm:inline font-medium">Sign Out</span>
               </button>
             </div>
           </div>
         </div>
       </header>}
 
-      <main className={hideHeader ? '' : 'max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8'}>
-        <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className={`p-6 rounded-xl shadow-sm col-span-1 md:col-span-2 ${
+      <main className={hideHeader ? '' : 'max-w-7xl mx-auto px-4 py-6 sm:py-8 sm:px-6 lg:px-8'}>
+        <div className="mb-6 sm:mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
+            <div className={`p-4 sm:p-6 rounded-xl shadow-sm col-span-1 md:col-span-2 ${
               currentStatus === 'clocked_in'
                 ? 'bg-gradient-to-r from-green-500 to-green-600'
                 : 'bg-gradient-to-r from-gray-600 to-gray-700'
             }`}>
               <div className="flex items-center justify-between text-white">
                 <div>
-                  <p className="text-sm opacity-90 mb-1">Current Status</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-xs sm:text-sm opacity-90 mb-1">Current Status</p>
+                  <p className="text-xl sm:text-2xl font-bold">
                     {currentStatus === 'clocked_in' ? 'Clocked In' : 'Clocked Out'}
                   </p>
                 </div>
-                <Clock className="w-12 h-12 opacity-80" />
+                <Clock className="w-10 h-10 sm:w-12 sm:h-12 opacity-80" />
               </div>
             </div>
 
-            <div className="p-6 rounded-xl shadow-sm bg-gradient-to-r from-blue-500 to-blue-600">
+            <div className="p-4 sm:p-6 rounded-xl shadow-sm bg-gradient-to-r from-blue-500 to-blue-600">
               <div className="text-white">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <button
                     onClick={() => changeMonth('prev')}
                     className="p-1 hover:bg-white/20 rounded transition"
+                    aria-label="Previous month"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                   <div className="text-center flex-1">
-                    <p className="text-xs opacity-90 mb-1">{getMonthYearDisplay()}</p>
-                    <p className="text-sm font-semibold">Days Worked</p>
+                    <p className="text-xs opacity-90 mb-0.5">{getMonthYearDisplay()}</p>
+                    <p className="text-xs sm:text-sm font-semibold">Days Worked</p>
                   </div>
                   <button
                     onClick={() => changeMonth('next')}
@@ -355,32 +348,33 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
                     className={`p-1 rounded transition ${
                       isCurrentMonth() ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/20'
                     }`}
+                    aria-label="Next month"
                   >
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </div>
-                <p className="text-3xl font-bold text-center">{monthlyStats.daysWorked}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-center">{monthlyStats.daysWorked}</p>
                 <p className="text-xs opacity-75 mt-1 text-center">{monthlyStats.totalClockIns} clock-ins</p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <button
               onClick={() => setShowScanner(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-3"
+              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
             >
-              <ScanLine className="w-6 h-6" />
-              Scan QR Code to {currentStatus === 'clocked_out' ? 'Clock In' : 'Clock Out'}
+              <ScanLine className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span>Scan QR to {currentStatus === 'clocked_out' ? 'Clock In' : 'Clock Out'}</span>
             </button>
 
             {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
               <button
                 onClick={() => setShowWasteForm(true)}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-3"
+                className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
               >
-                <ClipboardList className="w-6 h-6" />
-                Waste Management Form
+                <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />
+                <span>Waste Management Form</span>
               </button>
             )}
           </div>
@@ -396,53 +390,53 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Attendance</h2>
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Recent Attendance</h2>
 
           {loading ? (
             <div className="text-center py-8 text-gray-500">Loading...</div>
           ) : logs.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No attendance records yet</div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {logs.map((log: any, index: number) => (
                 <div
                   key={log.date || index}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
+                  className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition"
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">{log.site?.name}</h3>
-                      <p className="text-sm text-gray-600 flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        {log.site?.address}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 mb-1 truncate">{log.site?.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 flex items-start gap-1">
+                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0" />
+                        <span className="line-clamp-2">{log.site?.address}</span>
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mb-3">
-                    <Calendar className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-900 font-medium">{formatDate(log.date)}</span>
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
+                    <span className="text-xs sm:text-sm text-gray-900 font-medium">{formatDate(log.date)}</span>
                   </div>
                   <div className="space-y-2">
                     {log.entries.filter((e: any) => e.type === 'clock_in').map((entry: any, idx: number) => {
                       const clockOut = log.entries.filter((e: any) => e.type === 'clock_out')[idx];
                       return (
-                        <div key={idx} className="grid grid-cols-2 gap-4 p-2 bg-gray-50 rounded">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                        <div key={idx} className="grid grid-cols-2 gap-3 sm:gap-4 p-2 sm:p-3 bg-gray-50 rounded">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="px-1.5 sm:px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                               In
                             </span>
-                            <span className="text-sm text-gray-900 flex items-center gap-1">
-                              <Clock className="w-4 h-4 text-gray-500" />
+                            <span className="text-xs sm:text-sm text-gray-900 flex items-center gap-1">
+                              <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                               {formatTime(entry.timestamp)}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="px-1.5 sm:px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
                               Out
                             </span>
-                            <span className="text-sm text-gray-900 flex items-center gap-1">
-                              <Clock className="w-4 h-4 text-gray-500" />
+                            <span className="text-xs sm:text-sm text-gray-900 flex items-center gap-1">
+                              <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                               {clockOut ? formatTime(clockOut.timestamp) : '-'}
                             </span>
                           </div>
