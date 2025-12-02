@@ -191,6 +191,26 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             return;
           }
 
+          const today = new Date().toISOString().split('T')[0];
+          const { data: todayLogs } = await supabase
+            .from('attendance_logs')
+            .select('site_id')
+            .eq('employee_id', employee.id)
+            .gte('timestamp', `${today}T00:00:00.000Z`)
+            .lte('timestamp', `${today}T23:59:59.999Z`)
+            .limit(1);
+
+          if (todayLogs && todayLogs.length > 0) {
+            const firstSiteToday = todayLogs[0].site_id;
+            if (site.id !== firstSiteToday) {
+              setMessage({
+                type: 'error',
+                text: 'You can only use one site per day. You already clocked in at a different site today.'
+              });
+              return;
+            }
+          }
+
           const eventType = currentStatus === 'clocked_out' ? 'clock_in' : 'clock_out';
 
           if (eventType === 'clock_out' && currentSiteId && currentSiteId !== site.id) {
