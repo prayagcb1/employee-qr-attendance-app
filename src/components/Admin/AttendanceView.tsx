@@ -445,113 +445,130 @@ export function AttendanceView() {
           ) : sessions.length === 0 ? (
             <div className="text-center py-12 text-gray-500">No attendance records found</div>
           ) : (
-            <div className="space-y-4">
-              {sessions.map((session, sessionIndex) => (
-                <div key={sessionIndex} className="border border-gray-200 rounded-lg p-4 bg-white">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-4 border-b border-gray-200">
-                    <div className="mb-3 sm:mb-0">
-                      <p className="flex items-center gap-2 text-sm text-gray-900 font-semibold mb-1">
-                        <Calendar className="w-4 h-4" />
-                        {session.date}
-                      </p>
-                      <div className="ml-6">
-                        <p className="font-medium text-gray-900">{session.siteName}</p>
-                        <p className="text-xs text-gray-500">{session.siteAddress}</p>
-                      </div>
+            <div className="space-y-6">
+              {(() => {
+                const groupedByDate = sessions.reduce((acc, session) => {
+                  if (!acc[session.date]) {
+                    acc[session.date] = [];
+                  }
+                  acc[session.date].push(session);
+                  return acc;
+                }, {} as Record<string, typeof sessions>);
+
+                return Object.entries(groupedByDate).map(([date, dateSessions]) => (
+                  <div key={date} className="border-2 border-gray-300 rounded-xl p-4 sm:p-5 bg-gradient-to-br from-gray-50 to-white">
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b-2 border-gray-300">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-lg font-bold text-gray-900">{date}</h3>
+                      <span className="ml-auto text-xs text-gray-500">
+                        {dateSessions.length} {dateSessions.length === 1 ? 'site' : 'sites'}
+                      </span>
                     </div>
-                    {session.totalDuration && (
-                      <div className="ml-6 sm:ml-0">
-                        <p className="text-xs text-gray-500 mb-1">Total Duration</p>
-                        <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm font-bold">
-                          {session.totalDuration}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    {session.entries.map((entry, entryIndex) => (
-                      <div key={entryIndex} className="bg-gray-50 rounded-lg p-3">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            {entry.clockIn ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">
-                                    Clock In
-                                  </span>
-                                  <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
-                                    <Clock className="w-4 h-4 text-green-600" />
-                                    {formatTime(entry.clockIn.time)}
-                                  </p>
-                                </div>
-                                <div className="flex items-start gap-1 text-xs text-gray-600">
-                                  <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <p className="mb-1 line-clamp-2">{entry.clockIn.address}</p>
-                                    <a
-                                      href={`https://www.google.com/maps?q=${entry.clockIn.latitude},${entry.clockIn.longitude}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 hover:text-blue-700 underline"
-                                    >
-                                      View Map
-                                    </a>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-sm">-</span>
-                            )}
-                          </div>
-                          <div>
-                            {entry.clockOut ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold">
-                                    Clock Out
-                                  </span>
-                                  <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
-                                    <Clock className="w-4 h-4 text-red-600" />
-                                    {formatTime(entry.clockOut.time)}
-                                  </p>
-                                </div>
-                                <div className="flex items-start gap-1 text-xs text-gray-600">
-                                  <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <p className="mb-1 line-clamp-2">{entry.clockOut.address}</p>
-                                    <a
-                                      href={`https://www.google.com/maps?q=${entry.clockOut.latitude},${entry.clockOut.longitude}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 hover:text-blue-700 underline"
-                                    >
-                                      View Map
-                                    </a>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center h-full">
-                                <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-sm font-semibold">Active Session</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-start md:items-center md:justify-end">
-                            {entry.duration && (
+                    <div className="space-y-4">
+                      {dateSessions.map((session, sessionIndex) => (
+                        <div key={sessionIndex} className="border border-gray-200 rounded-lg p-3 sm:p-4 bg-white shadow-sm">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 pb-3 border-b border-gray-200">
+                            <div className="mb-2 sm:mb-0">
+                              <p className="font-semibold text-gray-900 text-base">{session.siteName}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">{session.siteAddress}</p>
+                            </div>
+                            {session.totalDuration && (
                               <div>
-                                <p className="text-xs text-gray-500 mb-1 md:text-right">Duration</p>
-                                <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-lg text-sm font-bold inline-block">
-                                  {entry.duration}
+                                <p className="text-xs text-gray-500 mb-1">Site Duration</p>
+                                <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm font-bold">
+                                  {session.totalDuration}
                                 </span>
                               </div>
                             )}
                           </div>
+                          <div className="space-y-2">
+                            {session.entries.map((entry, entryIndex) => (
+                              <div key={entryIndex} className="bg-gray-50 rounded-lg p-3">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                                  <div>
+                                    {entry.clockIn ? (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">
+                                            Clock In
+                                          </span>
+                                          <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
+                                            <Clock className="w-4 h-4 text-green-600" />
+                                            {formatTime(entry.clockIn.time)}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-start gap-1 text-xs text-gray-600">
+                                          <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                          <div>
+                                            <p className="mb-1 line-clamp-2">{entry.clockIn.address}</p>
+                                            <a
+                                              href={`https://www.google.com/maps?q=${entry.clockIn.latitude},${entry.clockIn.longitude}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-blue-600 hover:text-blue-700 underline"
+                                            >
+                                              View Map
+                                            </a>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-gray-400 text-sm">-</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    {entry.clockOut ? (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold">
+                                            Clock Out
+                                          </span>
+                                          <p className="flex items-center gap-1 text-sm text-gray-900 font-medium">
+                                            <Clock className="w-4 h-4 text-red-600" />
+                                            {formatTime(entry.clockOut.time)}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-start gap-1 text-xs text-gray-600">
+                                          <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                          <div>
+                                            <p className="mb-1 line-clamp-2">{entry.clockOut.address}</p>
+                                            <a
+                                              href={`https://www.google.com/maps?q=${entry.clockOut.latitude},${entry.clockOut.longitude}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-blue-600 hover:text-blue-700 underline"
+                                            >
+                                              View Map
+                                            </a>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center h-full">
+                                        <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-sm font-semibold">Active</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex items-start md:items-center md:justify-end">
+                                    {entry.duration && (
+                                      <div>
+                                        <p className="text-xs text-gray-500 mb-1 md:text-right">Duration</p>
+                                        <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-lg text-sm font-bold inline-block">
+                                          {entry.duration}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           )}
         </div>
