@@ -212,18 +212,35 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             return;
           }
 
-          const { data: lastSiteLog } = await supabase
-            .from('attendance_logs')
-            .select('event_type')
-            .eq('employee_id', employee.id)
-            .eq('site_id', site.id)
-            .order('timestamp', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          const today = new Date().toISOString().split('T')[0];
 
-          const eventType = !lastSiteLog || lastSiteLog.event_type === 'clock_out'
-            ? 'clock_in'
-            : 'clock_out';
+          const { data: todayLogs } = await supabase
+            .from('attendance_logs')
+            .select('id, event_type, site_id')
+            .eq('employee_id', employee.id)
+            .gte('timestamp', today)
+            .lt('timestamp', `${today}T23:59:59.999Z`)
+            .order('timestamp', { ascending: false });
+
+          const lastLog = todayLogs && todayLogs.length > 0 ? todayLogs[0] : null;
+
+          if (lastLog && lastLog.event_type === 'clock_in' && lastLog.site_id !== site.id) {
+            setMessage({
+              type: 'error',
+              text: 'Please clock out from your current site before clocking in to another site.'
+            });
+            return;
+          }
+
+          const eventType = !lastLog || lastLog.event_type === 'clock_out' ? 'clock_in' : 'clock_out';
+
+          if (eventType === 'clock_out' && lastLog && lastLog.site_id !== site.id) {
+            setMessage({
+              type: 'error',
+              text: 'You must clock out at the same site where you clocked in'
+            });
+            return;
+          }
 
           const { error: logError } = await supabase.from('attendance_logs').insert({
             employee_id: employee.id,
