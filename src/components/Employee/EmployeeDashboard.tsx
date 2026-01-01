@@ -89,6 +89,12 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
         });
       });
 
+      Object.values(grouped).forEach((day: any) => {
+        day.entries.sort((a: any, b: any) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+      });
+
       const groupedLogs = Object.values(grouped)
         .map((day: any) => {
           const clockIns = day.entries.filter((e: any) => e.type === 'clock_in');
@@ -123,15 +129,23 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
 
     const { data } = await supabase
       .from('attendance_logs')
-      .select('event_type, site_id')
+      .select('event_type, site_id, timestamp')
       .eq('employee_id', employee.id)
-      .order('timestamp', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order('timestamp', { ascending: false });
 
-    if (data) {
-      setCurrentStatus(data.event_type === 'clock_in' ? 'clocked_in' : 'clocked_out');
-      setCurrentSiteId(data.event_type === 'clock_in' ? data.site_id : null);
+    if (data && data.length > 0) {
+      const siteStatus: { [key: string]: string } = {};
+
+      data.forEach(log => {
+        if (!siteStatus[log.site_id]) {
+          siteStatus[log.site_id] = log.event_type;
+        }
+      });
+
+      const hasOpenClockIn = Object.values(siteStatus).some(status => status === 'clock_in');
+
+      setCurrentStatus(hasOpenClockIn ? 'clocked_in' : 'clocked_out');
+      setCurrentSiteId(hasOpenClockIn ? Object.keys(siteStatus).find(id => siteStatus[id] === 'clock_in') || null : null);
     }
   };
 
@@ -198,15 +212,18 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             return;
           }
 
-          const eventType = currentStatus === 'clocked_out' ? 'clock_in' : 'clock_out';
+          const { data: lastSiteLog } = await supabase
+            .from('attendance_logs')
+            .select('event_type')
+            .eq('employee_id', employee.id)
+            .eq('site_id', site.id)
+            .order('timestamp', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-          if (eventType === 'clock_out' && currentSiteId && currentSiteId !== site.id) {
-            setMessage({
-              type: 'error',
-              text: 'Please clock out at the same site where you clocked in'
-            });
-            return;
-          }
+          const eventType = !lastSiteLog || lastSiteLog.event_type === 'clock_out'
+            ? 'clock_in'
+            : 'clock_out';
 
           const { error: logError } = await supabase.from('attendance_logs').insert({
             employee_id: employee.id,
@@ -375,7 +392,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
               className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
             >
               <ScanLine className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>Scan QR to {currentStatus === 'clocked_out' ? 'Clock In' : 'Clock Out'}</span>
+              <span>Scan Site QR Code</span>
             </button>
 
             {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
