@@ -71,12 +71,19 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
 
       data.forEach(log => {
         const date = log.timestamp.split('T')[0];
+        const key = `${date}-${log.site_id}`;
 
-        if (!grouped[date]) {
-          grouped[date] = { date, entries: [], site: log.sites };
+        if (!grouped[key]) {
+          grouped[key] = {
+            date,
+            entries: [],
+            site: log.sites,
+            siteId: log.site_id,
+            timestamp: log.timestamp
+          };
         }
 
-        grouped[date].entries.push({
+        grouped[key].entries.push({
           type: log.event_type,
           timestamp: log.timestamp
         });
@@ -102,7 +109,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
           };
         })
         .sort((a: any, b: any) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime()
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         )
         .slice(0, 10);
 

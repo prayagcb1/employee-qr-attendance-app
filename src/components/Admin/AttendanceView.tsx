@@ -260,7 +260,11 @@ export function AttendanceView() {
       }
     });
 
-    const sessionsArray = Array.from(sessionMap.values());
+    const sessionsArray = Array.from(sessionMap.values()).sort((a, b) => {
+      const dateA = new Date(a.entries[0]?.clockIn?.time || a.entries[0]?.clockOut?.time || 0);
+      const dateB = new Date(b.entries[0]?.clockIn?.time || b.entries[0]?.clockOut?.time || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
     setSessions(sessionsArray);
 
     const addressPromises: Promise<void>[] = [];
