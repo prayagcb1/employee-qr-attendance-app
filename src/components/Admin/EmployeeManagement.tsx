@@ -112,7 +112,7 @@ export function EmployeeManagement() {
       }
     }
 
-    setFormData({ full_name: '', employee_code: '', username: '', email: '', phone: '', password: '', role: 'field_worker' });
+    setFormData({ full_name: '', employee_code: '', username: '', email: '', phone: '', password: '', date_of_joining: new Date().toISOString().split('T')[0], role: 'field_worker' });
     setShowForm(false);
     setSelectedEmployee(null);
     fetchEmployees();
@@ -127,6 +127,7 @@ export function EmployeeManagement() {
       email: employee.email,
       phone: employee.phone || '',
       password: '',
+      date_of_joining: employee.date_of_joining,
       role: employee.role,
     });
     setShowForm(true);
@@ -425,112 +426,199 @@ export function EmployeeManagement() {
       ) : employees.length === 0 ? (
         <div className="text-center py-12 text-gray-500">No employees found</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Employee</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Contact</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
-                <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">Joined</th>
-                <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((employee) => (
-                <tr key={employee.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-blue-600" />
+        <>
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Employee</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Contact</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
+                  <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">Joined</th>
+                  <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                  <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((employee) => (
+                  <tr key={employee.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{employee.full_name}</p>
+                          <p className="text-xs text-gray-500 truncate">{employee.employee_code}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{employee.full_name}</p>
-                        <p className="text-xs text-gray-500">{employee.employee_code}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="space-y-1">
-                      <p className="flex items-center gap-1 text-sm text-gray-900">
-                        <Mail className="w-4 h-4" />
-                        {employee.email}
-                      </p>
-                      {employee.phone && (
-                        <p className="flex items-center gap-1 text-sm text-gray-500">
-                          <Phone className="w-4 h-4" />
-                          {employee.phone}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="space-y-1 min-w-0">
+                        <p className="flex items-center gap-1 text-sm text-gray-900 truncate">
+                          <Mail className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{employee.email}</span>
                         </p>
-                      )}
+                        {employee.phone && (
+                          <p className="flex items-center gap-1 text-sm text-gray-500">
+                            <Phone className="w-4 h-4 flex-shrink-0" />
+                            {employee.phone}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold w-fit ${getRoleBadgeColor(employee.role)}`}>
+                        <Shield className="w-4 h-4" />
+                        {employee.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                    </td>
+                    <td className="py-4 px-2 whitespace-nowrap">
+                      <span className="text-xs text-gray-600">
+                        {new Date(employee.date_of_joining).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </td>
+                    <td className="py-4 px-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                        employee.active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {employee.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-2">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <button
+                          onClick={() => handleEdit(employee)}
+                          className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => resetPassword(employee)}
+                          disabled={!employee.user_id}
+                          className="p-2 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-100 disabled:text-gray-400 text-blue-700 rounded transition"
+                          title="Reset Password"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => toggleActive(employee)}
+                          className={`p-2 rounded transition ${
+                            employee.active
+                              ? 'bg-orange-100 hover:bg-orange-200 text-orange-700'
+                              : 'bg-green-100 hover:bg-green-200 text-green-700'
+                          }`}
+                          title={employee.active ? 'Disable' : 'Enable'}
+                        >
+                          {employee.active ? '✕' : '✓'}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(employee)}
+                          className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded transition"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="lg:hidden space-y-4">
+            {employees.map((employee) => (
+              <div key={employee.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate">{employee.full_name}</h3>
+                    <p className="text-sm text-gray-500">{employee.employee_code}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getRoleBadgeColor(employee.role)}`}>
+                        {employee.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        employee.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {employee.active ? 'Active' : 'Inactive'}
+                      </span>
                     </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold w-fit ${getRoleBadgeColor(employee.role)}`}>
-                      <Shield className="w-4 h-4" />
-                      {employee.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </span>
-                  </td>
-                  <td className="py-4 px-2 whitespace-nowrap">
-                    <span className="text-xs text-gray-600">
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <Mail className="w-4 h-4 flex-shrink-0 text-gray-500" />
+                    <span className="truncate">{employee.email}</span>
+                  </div>
+                  {employee.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <Phone className="w-4 h-4 flex-shrink-0 text-gray-500" />
+                      <span>{employee.phone}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-xs text-gray-500">Joined:</span>
+                    <span className="text-xs">
                       {new Date(employee.date_of_joining).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
                       })}
                     </span>
-                  </td>
-                  <td className="py-4 px-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => handleEdit(employee)}
+                    className="flex-1 flex items-center justify-center gap-2 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition text-sm"
+                  >
+                    <Edit className="w-4 h-4" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => resetPassword(employee)}
+                    disabled={!employee.user_id}
+                    className="flex-1 flex items-center justify-center gap-2 p-2 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-100 disabled:text-gray-400 text-blue-700 rounded transition text-sm"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    <span>Reset</span>
+                  </button>
+                  <button
+                    onClick={() => toggleActive(employee)}
+                    className={`p-2 rounded transition ${
                       employee.active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {employee.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="py-4 px-2">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <button
-                        onClick={() => handleEdit(employee)}
-                        className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition"
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => resetPassword(employee)}
-                        disabled={!employee.user_id}
-                        className="p-2 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-100 disabled:text-gray-400 text-blue-700 rounded transition"
-                        title="Reset Password"
-                      >
-                        <KeyRound className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => toggleActive(employee)}
-                        className={`p-2 rounded transition ${
-                          employee.active
-                            ? 'bg-orange-100 hover:bg-orange-200 text-orange-700'
-                            : 'bg-green-100 hover:bg-green-200 text-green-700'
-                        }`}
-                        title={employee.active ? 'Disable' : 'Enable'}
-                      >
-                        {employee.active ? '✕' : '✓'}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(employee)}
-                        className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded transition"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                        ? 'bg-orange-100 hover:bg-orange-200 text-orange-700'
+                        : 'bg-green-100 hover:bg-green-200 text-green-700'
+                    }`}
+                    title={employee.active ? 'Disable' : 'Enable'}
+                  >
+                    {employee.active ? '✕' : '✓'}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(employee)}
+                    className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded transition"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
