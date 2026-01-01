@@ -72,12 +72,13 @@ export function QRAttendanceScanner() {
 
       data.forEach((log: AttendanceLog) => {
         const date = log.timestamp.split('T')[0];
+        const key = `${date}-${log.site_id}`;
 
-        if (!grouped[date]) {
-          grouped[date] = { date, entries: [], site: log.sites };
+        if (!grouped[key]) {
+          grouped[key] = { date, entries: [], site: log.sites };
         }
 
-        grouped[date].entries.push({
+        grouped[key].entries.push({
           type: log.event_type,
           timestamp: log.timestamp,
           latitude: log.latitude,
@@ -85,7 +86,15 @@ export function QRAttendanceScanner() {
         });
       });
 
-      setLogs(Object.values(grouped));
+      Object.values(grouped).forEach((day: GroupedLog) => {
+        day.entries.sort((a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+      });
+
+      setLogs(Object.values(grouped).sort((a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      ));
     }
     setLoadingLogs(false);
   };
@@ -137,39 +146,18 @@ export function QRAttendanceScanner() {
             return;
           }
 
-          const today = new Date().toISOString().split('T')[0];
-
-          const { data: todayLogs } = await supabase
+          const { data: lastSiteLog } = await supabase
             .from('attendance_logs')
-            .select('id, event_type, site_id')
+            .select('event_type')
             .eq('employee_id', employee.id)
-            .gte('timestamp', today)
-            .lt('timestamp', `${today}T23:59:59.999Z`)
-            .order('timestamp', { ascending: false });
+            .eq('site_id', site.id)
+            .order('timestamp', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-          if (todayLogs && todayLogs.length > 0) {
-            const firstSiteId = todayLogs[todayLogs.length - 1].site_id;
-            if (site.id !== firstSiteId) {
-              setMessage({
-                type: 'error',
-                text: 'This employee can only clock in/out at one site per day. They already have entries for a different site today.'
-              });
-              setProcessing(false);
-              return;
-            }
-          }
-
-          const lastLog = todayLogs && todayLogs.length > 0 ? todayLogs[0] : null;
-          const eventType = !lastLog || lastLog.event_type === 'clock_out' ? 'clock_in' : 'clock_out';
-
-          if (eventType === 'clock_out' && lastLog && lastLog.site_id !== site.id) {
-            setMessage({
-              type: 'error',
-              text: 'Employee must clock out at the same site where they clocked in'
-            });
-            setProcessing(false);
-            return;
-          }
+          const eventType = !lastSiteLog || lastSiteLog.event_type === 'clock_out'
+            ? 'clock_in'
+            : 'clock_out';
 
           const { error: logError } = await supabase.from('attendance_logs').insert({
             employee_id: employee.id,

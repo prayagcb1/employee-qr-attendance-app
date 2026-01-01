@@ -11,11 +11,11 @@ type Tab = 'attendance' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms';
 
 export function ManagerDashboard() {
   const { employee, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('attendance');
+  const [activeTab, setActiveTab] = useState<Tab>('qr-scanner');
 
   const tabs = [
-    { id: 'attendance' as Tab, label: 'Attendance', icon: Clock },
     { id: 'qr-scanner' as Tab, label: 'QR Scanner', icon: QrCode },
+    { id: 'attendance' as Tab, label: 'Attendance', icon: Clock },
     { id: 'sites' as Tab, label: 'Sites', icon: MapPin },
     { id: 'employees' as Tab, label: 'Employees', icon: Users },
     { id: 'waste-forms' as Tab, label: 'Waste Forms', icon: ClipboardList },
