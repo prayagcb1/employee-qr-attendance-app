@@ -541,20 +541,20 @@ export function EmployeeManagement() {
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <User className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">{employee.full_name}</h3>
-                    <p className="text-sm text-gray-500">{employee.employee_code}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getRoleBadgeColor(employee.role)}`}>
-                        {employee.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        employee.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {employee.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <h3 className="font-semibold text-gray-900 truncate mb-1">{employee.full_name}</h3>
+                    <p className="text-sm text-gray-500 truncate">{employee.employee_code}</p>
                   </div>
+                </div>
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getRoleBadgeColor(employee.role)}`}>
+                    {employee.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                    employee.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {employee.active ? 'Active' : 'Inactive'}
+                  </span>
                 </div>
 
                 <div className="space-y-2 mb-3">

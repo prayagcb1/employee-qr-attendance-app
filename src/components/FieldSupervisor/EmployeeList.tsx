@@ -112,17 +112,15 @@ export function EmployeeList() {
               key={employee.id}
               className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <User className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1 truncate">{employee.full_name}</h3>
-                    <p className="text-sm text-gray-500 truncate">{employee.employee_code}</p>
-                  </div>
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-6 h-6 text-blue-600" />
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0 ml-2 ${
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <h3 className="font-semibold text-gray-900 mb-1 truncate">{employee.full_name}</h3>
+                  <p className="text-sm text-gray-500 truncate">{employee.employee_code}</p>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0 whitespace-nowrap ${
                   employee.active
                     ? 'bg-green-100 text-green-800'
                     : 'bg-gray-100 text-gray-800'

@@ -250,15 +250,15 @@ export function SiteManagement() {
               key={site.id}
               className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-1">{site.name}</h3>
-                  <p className="text-sm text-gray-600 flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    {site.address}
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <h3 className="font-semibold text-gray-900 mb-1 truncate">{site.name}</h3>
+                  <p className="text-sm text-gray-600 flex items-start gap-1">
+                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span className="line-clamp-2">{site.address}</span>
                   </p>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0 whitespace-nowrap ${
                   site.active
                     ? 'bg-green-100 text-green-800'
                     : 'bg-gray-100 text-gray-800'
