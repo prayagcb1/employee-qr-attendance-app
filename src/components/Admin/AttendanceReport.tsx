@@ -51,9 +51,10 @@ export function AttendanceReport() {
       setLoading(true);
       const [year, month] = selectedMonth.split('-').map(Number);
       const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
       const weekStart = new Date();
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setHours(0, 0, 0, 0);
 
       const { data: employeesData, error: empError } = await supabase
         .from('employees')
@@ -63,38 +64,35 @@ export function AttendanceReport() {
       if (empError) throw empError;
 
       const attendancePromises = (employeesData || []).map(async (emp) => {
-        const { data: monthAttendance } = await supabase
-          .from('attendance')
-          .select('clock_in, clock_out')
+        const { data: monthLogs } = await supabase
+          .from('attendance_logs')
+          .select('event_type, timestamp')
           .eq('employee_id', emp.id)
-          .gte('clock_in', startDate.toISOString())
-          .lte('clock_in', endDate.toISOString())
-          .not('clock_out', 'is', null);
+          .gte('timestamp', startDate.toISOString())
+          .lte('timestamp', endDate.toISOString())
+          .order('timestamp');
 
-        const { data: weekAttendance } = await supabase
-          .from('attendance')
-          .select('clock_in, clock_out')
+        const { data: weekLogs } = await supabase
+          .from('attendance_logs')
+          .select('event_type, timestamp')
           .eq('employee_id', emp.id)
-          .gte('clock_in', weekStart.toISOString())
-          .not('clock_out', 'is', null);
+          .gte('timestamp', weekStart.toISOString())
+          .order('timestamp');
 
         const { data: lastActive } = await supabase
-          .from('attendance')
-          .select('clock_in')
+          .from('attendance_logs')
+          .select('timestamp')
           .eq('employee_id', emp.id)
-          .order('clock_in', { ascending: false })
+          .eq('event_type', 'clock_in')
+          .order('timestamp', { ascending: false })
           .limit(1);
 
-        const totalDaysPresent = monthAttendance?.length || 0;
-        const totalHoursMonth = (monthAttendance || []).reduce((sum, record) => {
-          const hours = (new Date(record.clock_out).getTime() - new Date(record.clock_in).getTime()) / (1000 * 60 * 60);
-          return sum + hours;
-        }, 0);
+        const monthPairs = pairClockInOut(monthLogs || []);
+        const weekPairs = pairClockInOut(weekLogs || []);
 
-        const totalHoursWeek = (weekAttendance || []).reduce((sum, record) => {
-          const hours = (new Date(record.clock_out).getTime() - new Date(record.clock_in).getTime()) / (1000 * 60 * 60);
-          return sum + hours;
-        }, 0);
+        const totalDaysPresent = monthPairs.length;
+        const totalHoursMonth = monthPairs.reduce((sum, pair) => sum + pair.hours, 0);
+        const totalHoursWeek = weekPairs.reduce((sum, pair) => sum + pair.hours, 0);
 
         return {
           id: emp.id,
@@ -105,7 +103,7 @@ export function AttendanceReport() {
           total_hours_week: totalHoursWeek,
           total_hours_month: totalHoursMonth,
           avg_hours_per_day: totalDaysPresent > 0 ? totalHoursMonth / totalDaysPresent : 0,
-          last_active_date: lastActive?.[0]?.clock_in || null,
+          last_active_date: lastActive?.[0]?.timestamp || null,
         };
       });
 
@@ -116,6 +114,38 @@ export function AttendanceReport() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function pairClockInOut(logs: { event_type: string; timestamp: string }[]) {
+    const pairs: { date: string; clock_in: string; clock_out: string; hours: number }[] = [];
+    const dateMap = new Map<string, { clock_in?: string; clock_out?: string }>();
+
+    logs.forEach((log) => {
+      const date = new Date(log.timestamp).toISOString().split('T')[0];
+      if (!dateMap.has(date)) {
+        dateMap.set(date, {});
+      }
+      const entry = dateMap.get(date)!;
+      if (log.event_type === 'clock_in' && !entry.clock_in) {
+        entry.clock_in = log.timestamp;
+      } else if (log.event_type === 'clock_out' && !entry.clock_out) {
+        entry.clock_out = log.timestamp;
+      }
+    });
+
+    dateMap.forEach((entry, date) => {
+      if (entry.clock_in && entry.clock_out) {
+        const hours = (new Date(entry.clock_out).getTime() - new Date(entry.clock_in).getTime()) / (1000 * 60 * 60);
+        pairs.push({
+          date,
+          clock_in: entry.clock_in,
+          clock_out: entry.clock_out,
+          hours,
+        });
+      }
+    });
+
+    return pairs;
   }
 
   function filterEmployees() {
@@ -140,30 +170,38 @@ export function AttendanceReport() {
     const daysInMonth = new Date(year, month, 0).getDate();
     const dailyData: DailyAttendance[] = [];
 
-    const { data: attendance } = await supabase
-      .from('attendance')
-      .select('clock_in, clock_out')
+    const { data: logs } = await supabase
+      .from('attendance_logs')
+      .select('event_type, timestamp')
       .eq('employee_id', employeeId)
-      .gte('clock_in', new Date(year, month - 1, 1).toISOString())
-      .lte('clock_in', new Date(year, month, 0, 23, 59, 59).toISOString());
+      .gte('timestamp', new Date(year, month - 1, 1).toISOString())
+      .lte('timestamp', new Date(year, month, 0, 23, 59, 59).toISOString())
+      .order('timestamp');
 
-    const attendanceMap = new Map(
-      (attendance || []).map((record) => {
-        const date = new Date(record.clock_in).toISOString().split('T')[0];
-        return [date, record];
-      })
-    );
+    const dateMap = new Map<string, { clock_in?: string; clock_out?: string }>();
+    (logs || []).forEach((log) => {
+      const date = new Date(log.timestamp).toISOString().split('T')[0];
+      if (!dateMap.has(date)) {
+        dateMap.set(date, {});
+      }
+      const entry = dateMap.get(date)!;
+      if (log.event_type === 'clock_in' && !entry.clock_in) {
+        entry.clock_in = log.timestamp;
+      } else if (log.event_type === 'clock_out' && !entry.clock_out) {
+        entry.clock_out = log.timestamp;
+      }
+    });
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const record = attendanceMap.get(date);
+      const record = dateMap.get(date);
 
       dailyData.push({
         date,
         clock_in: record?.clock_in || null,
         clock_out: record?.clock_out || null,
-        status: record && record.clock_out ? 'present' : 'absent',
-        hours_worked: record && record.clock_out
+        status: record?.clock_in && record?.clock_out ? 'present' : 'absent',
+        hours_worked: record?.clock_in && record?.clock_out
           ? (new Date(record.clock_out).getTime() - new Date(record.clock_in).getTime()) / (1000 * 60 * 60)
           : 0,
       });
