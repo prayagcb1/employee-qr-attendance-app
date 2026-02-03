@@ -93,9 +93,19 @@ export function AttendanceReport() {
         const monthPairs = pairClockInOut(monthLogs || []);
         const weekPairs = pairClockInOut(weekLogs || []);
 
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+
+        const totalHoursWeek = weekPairs
+          .filter(pair => {
+            const pairDate = new Date(pair.date);
+            return pairDate >= weekStart && pairDate <= weekEnd;
+          })
+          .reduce((sum, pair) => sum + pair.hours, 0);
+
         const totalDaysPresent = monthPairs.length;
         const totalHoursMonth = monthPairs.reduce((sum, pair) => sum + pair.hours, 0);
-        const totalHoursWeek = weekPairs.reduce((sum, pair) => sum + pair.hours, 0);
 
         return {
           id: emp.id,
@@ -198,6 +208,9 @@ export function AttendanceReport() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const employeeRole = selectedEmployee?.role || '';
+    const isFieldRole = employeeRole === 'field_worker' || employeeRole === 'field_supervisor';
+
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const currentDate = new Date(year, month - 1, day);
@@ -210,7 +223,9 @@ export function AttendanceReport() {
         status = 'not_applicable';
       } else {
         const dayOfWeek = currentDate.getDay();
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
+        const isHoliday = isFieldRole ? dayOfWeek === 0 : (dayOfWeek === 0 || dayOfWeek === 6);
+
+        if (isHoliday) {
           status = 'not_applicable';
         } else if (record?.clock_in && record?.clock_out) {
           status = 'present';
