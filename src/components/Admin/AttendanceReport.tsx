@@ -62,10 +62,17 @@ export function AttendanceReport() {
       const endDate = new Date(year, month, 0, 23, 59, 59);
 
       const now = new Date();
-      const dayOfWeek = now.getDay();
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      const monthEnd = new Date(year, month, 0);
+      const referenceDate = now < monthEnd ? now : monthEnd;
+
+      const dayOfWeek = referenceDate.getDay();
+      const weekStart = new Date(referenceDate);
+      weekStart.setDate(referenceDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
       weekStart.setHours(0, 0, 0, 0);
+
+      if (weekStart < startDate) {
+        weekStart.setTime(startDate.getTime());
+      }
 
       const { data: employeesData, error: empError } = await supabase
         .from('employees')
@@ -83,13 +90,6 @@ export function AttendanceReport() {
           .lte('timestamp', endDate.toISOString())
           .order('timestamp');
 
-        const { data: weekLogs } = await supabase
-          .from('attendance_logs')
-          .select('event_type, timestamp')
-          .eq('employee_id', emp.id)
-          .gte('timestamp', weekStart.toISOString())
-          .order('timestamp');
-
         const { data: lastActive } = await supabase
           .from('attendance_logs')
           .select('timestamp')
@@ -99,13 +99,12 @@ export function AttendanceReport() {
           .limit(1);
 
         const monthPairs = pairClockInOut(monthLogs || []);
-        const weekPairs = pairClockInOut(weekLogs || []);
 
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
         weekEnd.setHours(23, 59, 59, 999);
 
-        const totalHoursWeek = weekPairs
+        const totalHoursWeek = monthPairs
           .filter(pair => {
             const pairDate = new Date(pair.date);
             return pairDate >= weekStart && pairDate <= weekEnd;
