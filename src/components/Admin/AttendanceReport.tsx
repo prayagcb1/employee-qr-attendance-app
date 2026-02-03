@@ -18,7 +18,7 @@ interface DailyAttendance {
   date: string;
   clock_in: string | null;
   clock_out: string | null;
-  status: 'present' | 'absent';
+  status: 'present' | 'absent' | 'incomplete' | 'not_applicable';
   hours_worked: number;
 }
 
@@ -36,7 +36,7 @@ export function AttendanceReport() {
   const [dailyAttendance, setDailyAttendance] = useState<DailyAttendance[]>([]);
   const [showDetail, setShowDetail] = useState(false);
 
-  const roles = ['all', 'manager', 'field_supervisor', 'field_worker', 'intern', 'office_employee'];
+  const roles = ['all', 'field_worker', 'field_supervisor', 'intern', 'office_employee', 'admin', 'manager'];
 
   useEffect(() => {
     fetchAttendanceData();
@@ -52,8 +52,11 @@ export function AttendanceReport() {
       const [year, month] = selectedMonth.split('-').map(Number);
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0, 23, 59, 59);
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
       weekStart.setHours(0, 0, 0, 0);
 
       const { data: employeesData, error: empError } = await supabase
@@ -192,18 +195,39 @@ export function AttendanceReport() {
       }
     });
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const currentDate = new Date(year, month - 1, day);
       const record = dateMap.get(date);
+
+      let status: 'present' | 'absent' | 'incomplete' | 'not_applicable' = 'absent';
+      let hours_worked = 0;
+
+      if (currentDate > today) {
+        status = 'not_applicable';
+      } else {
+        const dayOfWeek = currentDate.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          status = 'not_applicable';
+        } else if (record?.clock_in && record?.clock_out) {
+          status = 'present';
+          hours_worked = (new Date(record.clock_out).getTime() - new Date(record.clock_in).getTime()) / (1000 * 60 * 60);
+        } else if (record?.clock_in && !record?.clock_out) {
+          status = 'incomplete';
+        } else {
+          status = 'absent';
+        }
+      }
 
       dailyData.push({
         date,
         clock_in: record?.clock_in || null,
         clock_out: record?.clock_out || null,
-        status: record?.clock_in && record?.clock_out ? 'present' : 'absent',
-        hours_worked: record?.clock_in && record?.clock_out
-          ? (new Date(record.clock_out).getTime() - new Date(record.clock_in).getTime()) / (1000 * 60 * 60)
-          : 0,
+        status,
+        hours_worked,
       });
     }
 
@@ -410,28 +434,35 @@ export function AttendanceReport() {
 
                 {dailyAttendance.map((day) => {
                   const date = new Date(day.date);
-                  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+                  const getStatusDisplay = () => {
+                    switch (day.status) {
+                      case 'present': return 'P';
+                      case 'incomplete': return 'I';
+                      case 'absent': return 'A';
+                      case 'not_applicable': return '—';
+                      default: return '—';
+                    }
+                  };
+
+                  const getStatusColors = () => {
+                    switch (day.status) {
+                      case 'present': return 'bg-green-50 border-green-300 text-green-600';
+                      case 'incomplete': return 'bg-yellow-50 border-yellow-300 text-yellow-600';
+                      case 'absent': return 'bg-red-50 border-red-300 text-red-600';
+                      case 'not_applicable': return 'bg-gray-100 border-gray-300 text-gray-400';
+                      default: return 'bg-gray-100 border-gray-300 text-gray-400';
+                    }
+                  };
 
                   return (
                     <div
                       key={day.date}
-                      className={`aspect-square border rounded-lg p-2 flex flex-col items-center justify-center ${
-                        day.status === 'present'
-                          ? 'bg-green-50 border-green-300'
-                          : isWeekend
-                          ? 'bg-gray-100 border-gray-300'
-                          : 'bg-red-50 border-red-300'
-                      }`}
+                      className={`aspect-square border rounded-lg p-2 flex flex-col items-center justify-center ${getStatusColors()}`}
                     >
                       <div className="text-xs font-medium text-gray-700">{date.getDate()}</div>
-                      <div className={`text-lg font-bold ${
-                        day.status === 'present'
-                          ? 'text-green-600'
-                          : isWeekend
-                          ? 'text-gray-400'
-                          : 'text-red-600'
-                      }`}>
-                        {day.status === 'present' ? 'P' : isWeekend ? '-' : 'A'}
+                      <div className="text-lg font-bold">
+                        {getStatusDisplay()}
                       </div>
                       {day.status === 'present' && (
                         <div className="text-xs text-gray-600">{day.hours_worked.toFixed(1)}h</div>
@@ -441,18 +472,22 @@ export function AttendanceReport() {
                 })}
               </div>
 
-              <div className="mt-4 flex gap-4 justify-center text-sm">
+              <div className="mt-4 flex gap-4 justify-center text-sm flex-wrap">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-green-50 border border-green-300 rounded"></div>
-                  <span className="text-gray-600">Present</span>
+                  <span className="text-gray-600">P - Present</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-50 border border-yellow-300 rounded"></div>
+                  <span className="text-gray-600">I - Incomplete</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-red-50 border border-red-300 rounded"></div>
-                  <span className="text-gray-600">Absent</span>
+                  <span className="text-gray-600">A - Absent</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
-                  <span className="text-gray-600">Weekend</span>
+                  <span className="text-gray-600">— - Weekend/Future</span>
                 </div>
               </div>
             </div>
