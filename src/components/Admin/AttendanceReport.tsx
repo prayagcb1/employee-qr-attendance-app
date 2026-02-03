@@ -293,6 +293,12 @@ export function AttendanceReport() {
     return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
 
+  function formatHoursMinutes(hours: number): string {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h}:${String(m).padStart(2, '0')} hr`;
+  }
+
   function getAvgHoursColor(hours: number) {
     if (hours >= 8) return 'text-green-600';
     if (hours >= 6) return 'text-yellow-600';
@@ -395,13 +401,13 @@ export function AttendanceReport() {
                         {emp.total_days_present}
                       </td>
                       <td className="px-4 py-3 text-center font-medium text-gray-900">
-                        {Math.round(emp.total_hours_week)}h
+                        {formatHoursMinutes(emp.total_hours_week)}
                       </td>
                       <td className="px-4 py-3 text-center font-medium text-gray-900">
-                        {emp.total_hours_month.toFixed(1)}h
+                        {formatHoursMinutes(emp.total_hours_month)}
                       </td>
                       <td className={`px-4 py-3 text-center font-semibold ${getAvgHoursColor(emp.avg_hours_per_day)}`}>
-                        {emp.avg_hours_per_day.toFixed(1)}h
+                        {formatHoursMinutes(emp.avg_hours_per_day)}
                       </td>
                       <td className={`px-4 py-3 text-center text-sm ${getInactiveColor(emp.last_active_date)}`}>
                         {emp.last_active_date
@@ -441,16 +447,16 @@ export function AttendanceReport() {
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-gray-600">Week Hours</p>
-                  <p className="text-xl font-bold text-gray-900">{Math.round(selectedEmployee.total_hours_week)}h</p>
+                  <p className="text-xl font-bold text-gray-900">{formatHoursMinutes(selectedEmployee.total_hours_week)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-gray-600">Month Hours</p>
-                  <p className="text-xl font-bold text-gray-900">{selectedEmployee.total_hours_month.toFixed(1)}h</p>
+                  <p className="text-xl font-bold text-gray-900">{formatHoursMinutes(selectedEmployee.total_hours_month)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-gray-600">Avg Hours/Day</p>
                   <p className={`text-xl font-bold ${getAvgHoursColor(selectedEmployee.avg_hours_per_day)}`}>
-                    {selectedEmployee.avg_hours_per_day.toFixed(1)}h
+                    {formatHoursMinutes(selectedEmployee.avg_hours_per_day)}
                   </p>
                 </div>
               </div>
@@ -508,7 +514,7 @@ export function AttendanceReport() {
                         {getStatusDisplay()}
                       </div>
                       {day.status === 'present' && (
-                        <div className="text-xs text-gray-600">{day.hours_worked.toFixed(1)}h</div>
+                        <div className="text-xs text-gray-600">{formatHoursMinutes(day.hours_worked)}</div>
                       )}
                     </div>
                   );
