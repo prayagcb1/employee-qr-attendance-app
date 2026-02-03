@@ -9,6 +9,7 @@ interface EmployeeAttendance {
   role: string;
   total_days_present: number;
   total_hours_week: number;
+  expected_hours_week: number;
   total_hours_month: number;
   avg_hours_per_day: number;
   last_active_date: string | null;
@@ -111,6 +112,17 @@ export function AttendanceReport() {
           })
           .reduce((sum, pair) => sum + pair.hours, 0);
 
+        const isFieldRole = emp.role === 'field_worker' || emp.role === 'field_supervisor';
+        let expectedWorkdays = 0;
+        const currentWeekDate = new Date(weekStart);
+        while (currentWeekDate <= weekEnd && currentWeekDate <= endDate) {
+          const dayOfWeek = currentWeekDate.getDay();
+          const isWorkday = isFieldRole ? dayOfWeek !== 0 : (dayOfWeek !== 0 && dayOfWeek !== 6);
+          if (isWorkday) expectedWorkdays++;
+          currentWeekDate.setDate(currentWeekDate.getDate() + 1);
+        }
+        const expectedHoursWeek = expectedWorkdays * 8;
+
         const totalDaysPresent = monthPairs.length;
         const totalHoursMonth = monthPairs.reduce((sum, pair) => sum + pair.hours, 0);
 
@@ -121,6 +133,7 @@ export function AttendanceReport() {
           role: emp.role,
           total_days_present: totalDaysPresent,
           total_hours_week: totalHoursWeek,
+          expected_hours_week: expectedHoursWeek,
           total_hours_month: totalHoursMonth,
           avg_hours_per_day: totalDaysPresent > 0 ? totalHoursMonth / totalDaysPresent : 0,
           last_active_date: lastActive?.[0]?.timestamp || null,
@@ -194,7 +207,7 @@ export function AttendanceReport() {
     setFilteredEmployees(filtered);
   }
 
-  async function fetchDailyAttendance(employeeId: string) {
+  async function fetchDailyAttendance(employeeId: string, employeeRole: string) {
     const [year, month] = selectedMonth.split('-').map(Number);
     const daysInMonth = new Date(year, month, 0).getDate();
     const dailyData: DailyAttendance[] = [];
@@ -224,7 +237,6 @@ export function AttendanceReport() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const employeeRole = selectedEmployee?.role || '';
     const isFieldRole = employeeRole === 'field_worker' || employeeRole === 'field_supervisor';
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -267,7 +279,7 @@ export function AttendanceReport() {
 
   function handleRowClick(employee: EmployeeAttendance) {
     setSelectedEmployee(employee);
-    fetchDailyAttendance(employee.id);
+    fetchDailyAttendance(employee.id, employee.role);
     setShowDetail(true);
   }
 
@@ -382,8 +394,9 @@ export function AttendanceReport() {
                       <td className="px-4 py-3 text-center font-medium text-gray-900">
                         {emp.total_days_present}
                       </td>
-                      <td className="px-4 py-3 text-center font-medium text-gray-900">
-                        {emp.total_hours_week.toFixed(1)}h
+                      <td className="px-4 py-3 text-center">
+                        <div className="font-medium text-gray-900">{emp.total_hours_week.toFixed(1)}h / {emp.expected_hours_week}h</div>
+                        <div className="text-xs text-gray-500">{emp.expected_hours_week > 0 ? ((emp.total_hours_week / emp.expected_hours_week) * 100).toFixed(0) : 0}%</div>
                       </td>
                       <td className="px-4 py-3 text-center font-medium text-gray-900">
                         {emp.total_hours_month.toFixed(1)}h
@@ -430,6 +443,7 @@ export function AttendanceReport() {
                 <div className="text-center">
                   <p className="text-sm text-gray-600">Week Hours</p>
                   <p className="text-xl font-bold text-gray-900">{selectedEmployee.total_hours_week.toFixed(1)}h</p>
+                  <p className="text-xs text-gray-500">of {selectedEmployee.expected_hours_week}h expected</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-gray-600">Month Hours</p>
