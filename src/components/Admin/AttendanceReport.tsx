@@ -37,6 +37,14 @@ export function AttendanceReport() {
   const [showDetail, setShowDetail] = useState(false);
 
   const roles = ['all', 'field_worker', 'field_supervisor', 'intern', 'office_employee', 'admin', 'manager'];
+  const roleOrder: Record<string, number> = {
+    'field_worker': 1,
+    'field_supervisor': 2,
+    'intern': 3,
+    'office_employee': 4,
+    'admin': 5,
+    'manager': 6
+  };
 
   useEffect(() => {
     fetchAttendanceData();
@@ -174,6 +182,15 @@ export function AttendanceReport() {
     if (selectedRole !== 'all') {
       filtered = filtered.filter((emp) => emp.role === selectedRole);
     }
+
+    filtered = filtered.sort((a, b) => {
+      const roleA = roleOrder[a.role] || 999;
+      const roleB = roleOrder[b.role] || 999;
+      if (roleA !== roleB) {
+        return roleA - roleB;
+      }
+      return a.full_name.localeCompare(b.full_name);
+    });
 
     setFilteredEmployees(filtered);
   }
