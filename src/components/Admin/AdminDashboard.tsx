@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { AttendanceView } from './AttendanceView';
+import { AttendanceReport } from './AttendanceReport';
 import { SiteManagement } from './SiteManagement';
 import { EmployeeManagement } from './EmployeeManagement';
 import { WasteFormsView } from './WasteFormsView';
 import { QRAttendanceScanner } from './QRAttendanceScanner';
-import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode } from 'lucide-react';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText } from 'lucide-react';
 
-type Tab = 'attendance' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms';
+type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms';
 
 export function AdminDashboard() {
   const { employee, signOut } = useAuth();
@@ -16,6 +17,7 @@ export function AdminDashboard() {
   const tabs = [
     { id: 'qr-scanner' as Tab, label: 'QR Scanner', icon: QrCode },
     { id: 'attendance' as Tab, label: 'Attendance', icon: Clock },
+    { id: 'attendance-report' as Tab, label: 'Attendance Report', icon: FileText },
     { id: 'sites' as Tab, label: 'Sites', icon: MapPin },
     { id: 'employees' as Tab, label: 'Employees', icon: Users },
     { id: 'waste-forms' as Tab, label: 'Waste Forms', icon: ClipboardList },
@@ -68,6 +70,7 @@ export function AdminDashboard() {
 
         <div>
           {activeTab === 'attendance' && <AttendanceView />}
+          {activeTab === 'attendance-report' && <AttendanceReport />}
           {activeTab === 'qr-scanner' && <QRAttendanceScanner />}
           {activeTab === 'sites' && <SiteManagement />}
           {activeTab === 'employees' && <EmployeeManagement />}
