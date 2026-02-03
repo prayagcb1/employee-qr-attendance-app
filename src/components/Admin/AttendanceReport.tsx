@@ -394,9 +394,8 @@ export function AttendanceReport() {
                       <td className="px-4 py-3 text-center font-medium text-gray-900">
                         {emp.total_days_present}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="font-medium text-gray-900">{emp.total_hours_week.toFixed(1)}h / {emp.expected_hours_week}h</div>
-                        <div className="text-xs text-gray-500">{emp.expected_hours_week > 0 ? ((emp.total_hours_week / emp.expected_hours_week) * 100).toFixed(0) : 0}%</div>
+                      <td className="px-4 py-3 text-center font-medium text-gray-900">
+                        {Math.round(emp.total_hours_week)}h
                       </td>
                       <td className="px-4 py-3 text-center font-medium text-gray-900">
                         {emp.total_hours_month.toFixed(1)}h
@@ -442,8 +441,7 @@ export function AttendanceReport() {
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-gray-600">Week Hours</p>
-                  <p className="text-xl font-bold text-gray-900">{selectedEmployee.total_hours_week.toFixed(1)}h</p>
-                  <p className="text-xs text-gray-500">of {selectedEmployee.expected_hours_week}h expected</p>
+                  <p className="text-xl font-bold text-gray-900">{Math.round(selectedEmployee.total_hours_week)}h</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-gray-600">Month Hours</p>
