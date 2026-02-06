@@ -214,23 +214,27 @@ export function AttendanceReport() {
 
     const { data: logs } = await supabase
       .from('attendance_logs')
-      .select('event_type, timestamp')
+      .select('event_type, timestamp, site_id')
       .eq('employee_id', employeeId)
       .gte('timestamp', new Date(year, month - 1, 1).toISOString())
       .lte('timestamp', new Date(year, month, 0, 23, 59, 59).toISOString())
       .order('timestamp');
 
-    const dateMap = new Map<string, { clock_in?: string; clock_out?: string }>();
+    const dateSiteMap = new Map<string, Map<string, { clock_ins: string[]; clock_outs: string[] }>>();
     (logs || []).forEach((log) => {
       const date = new Date(log.timestamp).toISOString().split('T')[0];
-      if (!dateMap.has(date)) {
-        dateMap.set(date, {});
+      if (!dateSiteMap.has(date)) {
+        dateSiteMap.set(date, new Map());
       }
-      const entry = dateMap.get(date)!;
-      if (log.event_type === 'clock_in' && !entry.clock_in) {
-        entry.clock_in = log.timestamp;
-      } else if (log.event_type === 'clock_out' && !entry.clock_out) {
-        entry.clock_out = log.timestamp;
+      const siteMap = dateSiteMap.get(date)!;
+      if (!siteMap.has(log.site_id)) {
+        siteMap.set(log.site_id, { clock_ins: [], clock_outs: [] });
+      }
+      const siteEntry = siteMap.get(log.site_id)!;
+      if (log.event_type === 'clock_in') {
+        siteEntry.clock_ins.push(log.timestamp);
+      } else if (log.event_type === 'clock_out') {
+        siteEntry.clock_outs.push(log.timestamp);
       }
     });
 
@@ -242,10 +246,32 @@ export function AttendanceReport() {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const currentDate = new Date(year, month - 1, day);
-      const record = dateMap.get(date);
+      const siteMap = dateSiteMap.get(date);
 
       let status: 'present' | 'absent' | 'incomplete' | 'not_applicable' = 'absent';
       let hours_worked = 0;
+      let hasClockIn = false;
+      let hasIncomplete = false;
+      let firstClockIn: string | null = null;
+      let lastClockOut: string | null = null;
+
+      if (siteMap) {
+        siteMap.forEach((siteEntry) => {
+          siteEntry.clock_ins.forEach((clockIn, index) => {
+            hasClockIn = true;
+            if (!firstClockIn) firstClockIn = clockIn;
+
+            if (siteEntry.clock_outs[index]) {
+              const clockOut = siteEntry.clock_outs[index];
+              lastClockOut = clockOut;
+              const duration = (new Date(clockOut).getTime() - new Date(clockIn).getTime()) / (1000 * 60 * 60);
+              hours_worked += duration;
+            } else {
+              hasIncomplete = true;
+            }
+          });
+        });
+      }
 
       if (currentDate > today) {
         status = 'not_applicable';
@@ -255,10 +281,9 @@ export function AttendanceReport() {
 
         if (isHoliday) {
           status = 'not_applicable';
-        } else if (record?.clock_in && record?.clock_out) {
+        } else if (hasClockIn && hours_worked > 0) {
           status = 'present';
-          hours_worked = (new Date(record.clock_out).getTime() - new Date(record.clock_in).getTime()) / (1000 * 60 * 60);
-        } else if (record?.clock_in && !record?.clock_out) {
+        } else if (hasIncomplete) {
           status = 'incomplete';
         } else {
           status = 'absent';
@@ -267,8 +292,8 @@ export function AttendanceReport() {
 
       dailyData.push({
         date,
-        clock_in: record?.clock_in || null,
-        clock_out: record?.clock_out || null,
+        clock_in: firstClockIn,
+        clock_out: lastClockOut,
         status,
         hours_worked,
       });
@@ -361,17 +386,17 @@ export function AttendanceReport() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Employee</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Days Present</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Week Hours</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Month Hours</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Avg Hours/Day</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Last Active</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Employee</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Days</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Week</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Month</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Avg/Day</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Last Active</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -388,30 +413,30 @@ export function AttendanceReport() {
                       onClick={() => handleRowClick(emp)}
                       className="hover:bg-gray-50 cursor-pointer transition"
                     >
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{emp.full_name}</div>
-                        <div className="text-sm text-gray-500">{emp.employee_code}</div>
+                      <td className="px-3 sm:px-4 py-2 sm:py-3">
+                        <div className="font-medium text-sm sm:text-base text-gray-900">{emp.full_name}</div>
+                        <div className="text-xs sm:text-sm text-gray-500">{emp.employee_code}</div>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                      <td className="px-3 sm:px-4 py-2 sm:py-3">
+                        <span className="inline-flex px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                           {formatRole(emp.role)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center font-medium text-gray-900">
+                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-center font-medium text-sm sm:text-base text-gray-900">
                         {emp.total_days_present}
                       </td>
-                      <td className="px-4 py-3 text-center font-medium text-gray-900">
+                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-center font-medium text-xs sm:text-sm text-gray-900">
                         {formatHoursMinutes(emp.total_hours_week)}
                       </td>
-                      <td className="px-4 py-3 text-center font-medium text-gray-900">
+                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-center font-medium text-xs sm:text-sm text-gray-900">
                         {formatHoursMinutes(emp.total_hours_month)}
                       </td>
-                      <td className={`px-4 py-3 text-center font-semibold ${getAvgHoursColor(emp.avg_hours_per_day)}`}>
+                      <td className={`px-3 sm:px-4 py-2 sm:py-3 text-center font-semibold text-xs sm:text-sm ${getAvgHoursColor(emp.avg_hours_per_day)}`}>
                         {formatHoursMinutes(emp.avg_hours_per_day)}
                       </td>
-                      <td className={`px-4 py-3 text-center text-sm ${getInactiveColor(emp.last_active_date)}`}>
+                      <td className={`px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm ${getInactiveColor(emp.last_active_date)}`}>
                         {emp.last_active_date
-                          ? new Date(emp.last_active_date).toLocaleDateString()
+                          ? new Date(emp.last_active_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                           : 'Never'}
                       </td>
                     </tr>
@@ -424,56 +449,57 @@ export function AttendanceReport() {
       )}
 
       {showDetail && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">{selectedEmployee.full_name}</h3>
-                <p className="text-sm text-gray-600">{selectedEmployee.employee_code} - {formatRole(selectedEmployee.role)}</p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{selectedEmployee.full_name}</h3>
+                <p className="text-xs sm:text-sm text-gray-600 truncate">{selectedEmployee.employee_code} - {formatRole(selectedEmployee.role)}</p>
               </div>
               <button
                 onClick={closeDetail}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                className="p-2 hover:bg-gray-100 rounded-lg transition flex-shrink-0 ml-2"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-3 sm:p-4 border-b border-gray-200 bg-gray-50">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">Days Present</p>
-                  <p className="text-xl font-bold text-gray-900">{selectedEmployee.total_days_present}</p>
+                  <p className="text-xs sm:text-sm text-gray-600">Days Present</p>
+                  <p className="text-lg sm:text-xl font-bold text-gray-900">{selectedEmployee.total_days_present}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">Week Hours</p>
-                  <p className="text-xl font-bold text-gray-900">{formatHoursMinutes(selectedEmployee.total_hours_week)}</p>
+                  <p className="text-xs sm:text-sm text-gray-600">Week Hours</p>
+                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatHoursMinutes(selectedEmployee.total_hours_week)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">Month Hours</p>
-                  <p className="text-xl font-bold text-gray-900">{formatHoursMinutes(selectedEmployee.total_hours_month)}</p>
+                  <p className="text-xs sm:text-sm text-gray-600">Month Hours</p>
+                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatHoursMinutes(selectedEmployee.total_hours_month)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">Avg Hours/Day</p>
-                  <p className={`text-xl font-bold ${getAvgHoursColor(selectedEmployee.avg_hours_per_day)}`}>
+                  <p className="text-xs sm:text-sm text-gray-600">Avg Hours/Day</p>
+                  <p className={`text-lg sm:text-xl font-bold ${getAvgHoursColor(selectedEmployee.avg_hours_per_day)}`}>
                     {formatHoursMinutes(selectedEmployee.avg_hours_per_day)}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Calendar className="w-5 h-5 text-gray-600" />
-                <h4 className="font-semibold text-gray-900">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 flex-shrink-0" />
+                <h4 className="font-semibold text-sm sm:text-base text-gray-900">
                   Daily Attendance - {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </h4>
               </div>
 
-              <div className="grid grid-cols-7 gap-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="text-center text-xs font-semibold text-gray-600 py-2">
-                    {day}
+              <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                  <div key={day} className="text-center text-[10px] sm:text-xs font-semibold text-gray-600 py-1 sm:py-2">
+                    <span className="hidden sm:inline">{day}</span>
+                    <span className="sm:hidden">{day.charAt(0)}</span>
                   </div>
                 ))}
 
@@ -507,35 +533,35 @@ export function AttendanceReport() {
                   return (
                     <div
                       key={day.date}
-                      className={`aspect-square border rounded-lg p-2 flex flex-col items-center justify-center ${getStatusColors()}`}
+                      className={`aspect-square border rounded-lg p-1 sm:p-2 flex flex-col items-center justify-center ${getStatusColors()}`}
                     >
-                      <div className="text-xs font-medium text-gray-700">{date.getDate()}</div>
-                      <div className="text-lg font-bold">
+                      <div className="text-[10px] sm:text-xs font-medium text-gray-700">{date.getDate()}</div>
+                      <div className="text-sm sm:text-lg font-bold">
                         {getStatusDisplay()}
                       </div>
                       {day.status === 'present' && (
-                        <div className="text-xs text-gray-600">{formatHoursMinutes(day.hours_worked)}</div>
+                        <div className="text-[9px] sm:text-xs text-gray-600 text-center leading-tight">{formatHoursMinutes(day.hours_worked)}</div>
                       )}
                     </div>
                   );
                 })}
               </div>
 
-              <div className="mt-4 flex gap-4 justify-center text-sm flex-wrap">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-50 border border-green-300 rounded"></div>
+              <div className="mt-3 sm:mt-4 flex gap-2 sm:gap-4 justify-center text-xs sm:text-sm flex-wrap">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-50 border border-green-300 rounded"></div>
                   <span className="text-gray-600">P - Present</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-yellow-50 border border-yellow-300 rounded"></div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 bg-yellow-50 border border-yellow-300 rounded"></div>
                   <span className="text-gray-600">I - Incomplete</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-red-50 border border-red-300 rounded"></div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-50 border border-red-300 rounded"></div>
                   <span className="text-gray-600">A - Absent</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-100 border border-gray-300 rounded"></div>
                   <span className="text-gray-600">— - Weekend/Future</span>
                 </div>
               </div>
