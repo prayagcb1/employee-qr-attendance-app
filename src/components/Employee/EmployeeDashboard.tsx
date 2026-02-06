@@ -6,7 +6,7 @@ import { WasteManagementForm } from './WasteManagementForm';
 import { PasswordChangeForm } from './PasswordChangeForm';
 import { LeaveRequestForm } from './LeaveRequestForm';
 import { WFHButton } from './WFHButton';
-import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, Home, Briefcase } from 'lucide-react';
+import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, Home, Briefcase, FileText } from 'lucide-react';
 
 interface AttendanceLog {
   id: string;
