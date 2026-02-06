@@ -543,7 +543,7 @@ export function AttendanceReport() {
                       key={day.date}
                       className={`aspect-square border rounded-lg p-1 sm:p-2 flex flex-col items-center justify-center ${getStatusColors()}`}
                     >
-                      <div className="text-[10px] sm:text-xs font-medium text-gray-690">{date.getDate()}</div>
+                      <div className="text-[10px] sm:text-xs font-medium text-gray-700">{date.getDate()}</div>
                       <div className="text-sm sm:text-lg font-bold">
                         {getStatusDisplay()}
                       </div>
