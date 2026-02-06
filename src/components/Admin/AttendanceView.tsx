@@ -463,14 +463,40 @@ export function AttendanceView() {
                   return acc;
                 }, {} as Record<string, typeof sessions>);
 
-                return Object.entries(groupedByDate).map(([date, dateSessions]) => (
+                return Object.entries(groupedByDate).map(([date, dateSessions]) => {
+                  let dailyTotalMs = 0;
+                  dateSessions.forEach(session => {
+                    session.entries.forEach(entry => {
+                      if (entry.clockIn && entry.clockOut) {
+                        const clockInTime = new Date(entry.clockIn.time).getTime();
+                        const clockOutTime = new Date(entry.clockOut.time).getTime();
+                        dailyTotalMs += clockOutTime - clockInTime;
+                      }
+                    });
+                  });
+
+                  const dailyTotalHours = Math.floor(dailyTotalMs / (1000 * 60 * 60));
+                  const dailyTotalMinutes = Math.floor((dailyTotalMs % (1000 * 60 * 60)) / (1000 * 60));
+                  const dailyTotalFormatted = dailyTotalMs > 0 ? formatHoursMinutes(dailyTotalHours, dailyTotalMinutes) : null;
+
+                  return (
                   <div key={date} className="border-2 border-gray-300 rounded-xl p-4 sm:p-5 bg-gradient-to-br from-gray-50 to-white">
-                    <div className="flex items-center gap-2 mb-4 pb-3 border-b-2 border-gray-300">
-                      <Calendar className="w-5 h-5 text-blue-600" />
-                      <h3 className="text-lg font-bold text-gray-900">{date}</h3>
-                      <span className="ml-auto text-xs text-gray-500">
-                        {dateSessions.length} {dateSessions.length === 1 ? 'site' : 'sites'}
-                      </span>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 pb-3 border-b-2 border-gray-300">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-lg font-bold text-gray-900">{date}</h3>
+                        <span className="text-xs text-gray-500">
+                          {dateSessions.length} {dateSessions.length === 1 ? 'site' : 'sites'}
+                        </span>
+                      </div>
+                      {dailyTotalFormatted && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">Daily Total:</span>
+                          <span className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-base font-bold shadow-md">
+                            {dailyTotalFormatted}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-4">
                       {dateSessions.map((session, sessionIndex) => (
@@ -575,7 +601,8 @@ export function AttendanceView() {
                       ))}
                     </div>
                   </div>
-                ));
+                );
+                });
               })()}
             </div>
           )}
