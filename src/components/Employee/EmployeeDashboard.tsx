@@ -51,6 +51,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [todayLeaveWFHStatus, setTodayLeaveWFHStatus] = useState<'none' | 'leave' | 'wfh'>('none');
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [showLeaveStatus, setShowLeaveStatus] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -510,13 +511,23 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             </div>
           )}
 
-          <button
-            onClick={() => setShowLeaveRequestForm(true)}
-            className="w-full bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base mt-3 sm:mt-4"
-          >
-            <CalendarCheck className="w-5 h-5 sm:w-6 sm:h-6" />
-            <span>Request Leave or WFH</span>
-          </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
+            <button
+              onClick={() => setShowLeaveRequestForm(true)}
+              className="w-full bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
+            >
+              <CalendarCheck className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span>Request Leave or WFH</span>
+            </button>
+
+            <button
+              onClick={() => setShowLeaveStatus(!showLeaveStatus)}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
+            >
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span>{showLeaveStatus ? 'Hide' : 'View'} Request Status</span>
+            </button>
+          </div>
 
           {message && (
             <div className={`mt-4 p-4 rounded-lg ${
@@ -599,9 +610,12 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
           )}
         </div>
 
-        {leaveRequests.length > 0 && (
+        {showLeaveStatus && (
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mt-6">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">My Leave & WFH Requests</h2>
+            {leaveRequests.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No leave or WFH requests yet</div>
+            ) : (
             <div className="space-y-3 sm:space-y-4">
               {leaveRequests.map((request) => (
                 <div
@@ -676,6 +690,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
       </main>
