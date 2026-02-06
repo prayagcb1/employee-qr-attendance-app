@@ -239,7 +239,7 @@ export function AttendanceView() {
           const durationMs = clockOutTime - clockInTime;
           const hours = Math.floor(durationMs / (1000 * 60 * 60));
           const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-          lastEntry.duration = `${hours}h ${minutes}m`;
+          lastEntry.duration = formatHoursMinutes(hours, minutes);
         }
       }
     });
@@ -256,7 +256,7 @@ export function AttendanceView() {
       if (totalMs > 0) {
         const hours = Math.floor(totalMs / (1000 * 60 * 60));
         const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
-        session.totalDuration = `${hours}h ${minutes}m`;
+        session.totalDuration = formatHoursMinutes(hours, minutes);
       }
     });
 
@@ -331,6 +331,10 @@ export function AttendanceView() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const formatHoursMinutes = (hours: number, minutes: number): string => {
+    return `${hours}:${String(minutes).padStart(2, '0')} hr`;
   };
 
   const getTodayDate = () => {
