@@ -21,6 +21,17 @@ interface AttendanceLog {
   };
 }
 
+interface LeaveRequest {
+  id: string;
+  request_type: 'leave' | 'wfh';
+  start_date: string;
+  end_date: string | null;
+  reason: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  requested_at: string;
+  rejection_reason: string | null;
+}
+
 interface EmployeeDashboardProps {
   hideHeader?: boolean;
 }
@@ -39,11 +50,13 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
   const [monthlyStats, setMonthlyStats] = useState({ daysWorked: 0, totalClockIns: 0 });
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [todayLeaveWFHStatus, setTodayLeaveWFHStatus] = useState<'none' | 'leave' | 'wfh'>('none');
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
 
   useEffect(() => {
     fetchLogs();
     checkCurrentStatus();
     checkTodayLeaveWFHStatus();
+    fetchLeaveRequests();
   }, [employee]);
 
   useEffect(() => {
@@ -199,20 +212,38 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
 
     const { data: approvedWFH } = await supabase
       .from('leave_requests')
-      .select('id')
+      .select('id, start_date, end_date')
       .eq('employee_id', employee.id)
       .eq('request_type', 'wfh')
       .eq('status', 'approved')
-      .lte('start_date', today)
-      .gte('end_date', today)
-      .maybeSingle();
+      .lte('start_date', today);
 
-    if (approvedWFH) {
-      setTodayLeaveWFHStatus('wfh');
-      return;
+    if (approvedWFH && approvedWFH.length > 0) {
+      const hasWFHToday = approvedWFH.some(req =>
+        req.end_date ? req.end_date >= today : req.start_date === today
+      );
+      if (hasWFHToday) {
+        setTodayLeaveWFHStatus('wfh');
+        return;
+      }
     }
 
     setTodayLeaveWFHStatus('none');
+  };
+
+  const fetchLeaveRequests = async () => {
+    if (!employee) return;
+
+    const { data, error } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .eq('employee_id', employee.id)
+      .order('requested_at', { ascending: false })
+      .limit(10);
+
+    if (!error && data) {
+      setLeaveRequests(data);
+    }
   };
 
   const handleScan = async (qrData: string) => {
@@ -567,6 +598,86 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             </div>
           )}
         </div>
+
+        {leaveRequests.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mt-6">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">My Leave & WFH Requests</h2>
+            <div className="space-y-3 sm:space-y-4">
+              {leaveRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {request.request_type === 'wfh' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-lg text-xs sm:text-sm font-semibold">
+                          <Home className="w-3 h-3 sm:w-4 sm:h-4" />
+                          Work From Home
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs sm:text-sm font-semibold">
+                          <Briefcase className="w-3 h-3 sm:w-4 sm:h-4" />
+                          Leave
+                        </span>
+                      )}
+                    </div>
+                    {request.status === 'pending' && (
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-xs font-semibold whitespace-nowrap">
+                        Pending
+                      </span>
+                    )}
+                    {request.status === 'approved' && (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-lg text-xs font-semibold whitespace-nowrap">
+                        Approved
+                      </span>
+                    )}
+                    {request.status === 'rejected' && (
+                      <span className="px-2 py-1 bg-red-100 text-red-800 rounded-lg text-xs font-semibold whitespace-nowrap">
+                        Rejected
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 text-xs sm:text-sm">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="font-medium">
+                        {new Date(request.start_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                        {request.end_date && (
+                          <> - {new Date(request.end_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}</>
+                        )}
+                      </span>
+                    </div>
+
+                    {request.reason && (
+                      <div className="flex items-start gap-2 text-gray-600">
+                        <FileText className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 mt-0.5" />
+                        <span>{request.reason}</span>
+                      </div>
+                    )}
+
+                    {request.status === 'rejected' && request.rejection_reason && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3 mt-2">
+                        <p className="text-xs sm:text-sm text-red-800">
+                          <span className="font-semibold">Rejection Reason:</span> {request.rejection_reason}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       {showScanner && (

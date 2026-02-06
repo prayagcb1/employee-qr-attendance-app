@@ -6,8 +6,8 @@ interface LeaveRequest {
   id: string;
   request_type: 'leave' | 'wfh';
   start_date: string;
-  end_date: string;
-  reason: string;
+  end_date: string | null;
+  reason: string | null;
   status: 'pending' | 'approved' | 'rejected';
   requested_at: string;
   rejection_reason: string | null;
@@ -206,12 +206,16 @@ export function LeaveApprovalView({ currentEmployeeId }: LeaveApprovalViewProps)
                       <User className="w-5 h-5 text-blue-600" />
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
                         <h3 className="font-semibold text-gray-900">{request.employees.full_name}</h3>
                         <span className="text-sm text-gray-500">({request.employees.employee_code})</span>
                         <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
                           {request.employees.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                         </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Requested on {formatDateTime(request.requested_at)}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         {request.request_type === 'wfh' ? (
@@ -244,36 +248,31 @@ export function LeaveApprovalView({ currentEmployeeId }: LeaveApprovalViewProps)
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-start gap-2">
-                      <Calendar className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-gray-600">Duration</p>
-                        <p className="font-semibold text-gray-900">
-                          {formatDate(request.start_date)} - {formatDate(request.end_date)}
-                        </p>
+                  <div className="flex items-start gap-2 text-sm">
+                    <Calendar className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-gray-600">Date{request.end_date ? 's' : ''}</p>
+                      <p className="font-semibold text-gray-900">
+                        {formatDate(request.start_date)}
+                        {request.end_date && <> - {formatDate(request.end_date)}</>}
+                      </p>
+                      {request.end_date && (
                         <p className="text-xs text-gray-500">
                           {getDayCount(request.start_date, request.end_date)} day(s)
                         </p>
-                      </div>
+                      )}
                     </div>
+                  </div>
 
-                    <div className="flex items-start gap-2">
-                      <Clock className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  {request.reason && (
+                    <div className="flex items-start gap-2 text-sm">
+                      <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-gray-600">Requested</p>
-                        <p className="font-semibold text-gray-900">{formatDateTime(request.requested_at)}</p>
+                        <p className="text-gray-600 mb-1">Reason</p>
+                        <p className="text-gray-900">{request.reason}</p>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-start gap-2 text-sm">
-                    <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-gray-600 mb-1">Reason</p>
-                      <p className="text-gray-900">{request.reason}</p>
-                    </div>
-                  </div>
+                  )}
 
                   {request.status === 'rejected' && request.rejection_reason && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3">

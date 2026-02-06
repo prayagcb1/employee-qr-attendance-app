@@ -30,8 +30,8 @@ export function LeaveRequestForm({ employeeId, employeeRole, onClose, onSuccess 
     e.preventDefault();
     setError('');
 
-    if (!startDate || !endDate || !reason.trim()) {
-      setError('Please fill in all fields');
+    if (!startDate) {
+      setError('Please select a start date');
       return;
     }
 
@@ -40,7 +40,7 @@ export function LeaveRequestForm({ employeeId, employeeRole, onClose, onSuccess 
       return;
     }
 
-    if (new Date(endDate) < new Date(startDate)) {
+    if (endDate && new Date(endDate) < new Date(startDate)) {
       setError('End date cannot be before start date');
       return;
     }
@@ -54,8 +54,8 @@ export function LeaveRequestForm({ employeeId, employeeRole, onClose, onSuccess 
           employee_id: employeeId,
           request_type: requestType,
           start_date: startDate,
-          end_date: endDate,
-          reason: reason.trim(),
+          end_date: endDate || null,
+          reason: reason.trim() || null,
           status: 'pending'
         });
 
@@ -140,14 +140,13 @@ export function LeaveRequestForm({ employeeId, employeeRole, onClose, onSuccess 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
               <Calendar className="w-4 h-4 inline mr-1" />
-              End Date
+              End Date <span className="text-gray-500 text-xs font-normal">(Optional - Leave blank for single day)</span>
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               min={startDate || getTomorrowDate()}
-              required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -155,13 +154,12 @@ export function LeaveRequestForm({ employeeId, employeeRole, onClose, onSuccess 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
               <FileText className="w-4 h-4 inline mr-1" />
-              Reason
+              Reason <span className="text-gray-500 text-xs font-normal">(Optional)</span>
             </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Please provide a reason for your request..."
-              required
+              placeholder="Optionally provide a reason for your request..."
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />

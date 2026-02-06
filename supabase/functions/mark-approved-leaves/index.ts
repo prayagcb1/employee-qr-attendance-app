@@ -21,19 +21,22 @@ Deno.serve(async (req: Request) => {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data: approvedLeaves, error: fetchError } = await supabase
+    const { data: allApprovedLeaves, error: fetchError } = await supabase
       .from('leave_requests')
       .select('id, employee_id, start_date, end_date')
       .eq('request_type', 'leave')
       .eq('status', 'approved')
-      .lte('start_date', today)
-      .gte('end_date', today);
+      .lte('start_date', today);
 
     if (fetchError) {
       throw fetchError;
     }
 
-    if (!approvedLeaves || approvedLeaves.length === 0) {
+    const approvedLeaves = (allApprovedLeaves || []).filter(leave =>
+      leave.end_date ? leave.end_date >= today : leave.start_date === today
+    );
+
+    if (approvedLeaves.length === 0) {
       return new Response(
         JSON.stringify({
           message: 'No leaves to mark for today',
