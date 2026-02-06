@@ -6,9 +6,10 @@ import { SiteManagement } from './SiteManagement';
 import { EmployeeManagement } from './EmployeeManagement';
 import { WasteFormsView } from './WasteFormsView';
 import { QRAttendanceScanner } from './QRAttendanceScanner';
-import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText } from 'lucide-react';
+import { LeaveApprovalView } from './LeaveApprovalView';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, CalendarCheck } from 'lucide-react';
 
-type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms';
+type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'leave-approvals';
 
 export function AdminDashboard() {
   const { employee, signOut } = useAuth();
@@ -18,6 +19,7 @@ export function AdminDashboard() {
     { id: 'qr-scanner' as Tab, label: 'QR Scanner', icon: QrCode },
     { id: 'attendance' as Tab, label: 'Attendance', icon: Clock },
     { id: 'attendance-report' as Tab, label: 'Attendance Report', icon: FileText },
+    { id: 'leave-approvals' as Tab, label: 'Leave & WFH', icon: CalendarCheck },
     { id: 'sites' as Tab, label: 'Sites', icon: MapPin },
     { id: 'employees' as Tab, label: 'Employees', icon: Users },
     { id: 'waste-forms' as Tab, label: 'Waste Forms', icon: ClipboardList },
@@ -72,6 +74,7 @@ export function AdminDashboard() {
           {activeTab === 'attendance' && <AttendanceView />}
           {activeTab === 'attendance-report' && <AttendanceReport />}
           {activeTab === 'qr-scanner' && <QRAttendanceScanner />}
+          {activeTab === 'leave-approvals' && <LeaveApprovalView currentEmployeeId={employee?.id || ''} />}
           {activeTab === 'sites' && <SiteManagement />}
           {activeTab === 'employees' && <EmployeeManagement />}
           {activeTab === 'waste-forms' && <WasteFormsView />}

@@ -19,7 +19,7 @@ interface DailyAttendance {
   date: string;
   clock_in: string | null;
   clock_out: string | null;
-  status: 'present' | 'absent' | 'incomplete' | 'not_applicable';
+  status: 'present' | 'absent' | 'incomplete' | 'not_applicable' | 'leave' | 'wfh' | 'incomplete_wfh';
   hours_worked: number;
 }
 
@@ -91,6 +91,14 @@ export function AttendanceReport() {
           .lte('timestamp', endDate.toISOString())
           .order('timestamp');
 
+        const { data: wfhLogs } = await supabase
+          .from('wfh_attendance')
+          .select('date, duration_minutes, status')
+          .eq('employee_id', emp.id)
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', endDate.toISOString().split('T')[0])
+          .in('status', ['complete', 'incomplete']);
+
         const { data: lastActive } = await supabase
           .from('attendance_logs')
           .select('timestamp')
@@ -100,6 +108,13 @@ export function AttendanceReport() {
           .limit(1);
 
         const monthPairs = pairClockInOut(monthLogs || []);
+
+        const wfhHoursMap = new Map<string, number>();
+        (wfhLogs || []).forEach(log => {
+          if (log.status === 'complete' && log.duration_minutes) {
+            wfhHoursMap.set(log.date, log.duration_minutes / 60);
+          }
+        });
 
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
@@ -112,6 +127,13 @@ export function AttendanceReport() {
           })
           .reduce((sum, pair) => sum + pair.hours, 0);
 
+        const wfhHoursWeek = Array.from(wfhHoursMap.entries())
+          .filter(([date]) => {
+            const wfhDate = new Date(date);
+            return wfhDate >= weekStart && wfhDate <= weekEnd;
+          })
+          .reduce((sum, [, hours]) => sum + hours, 0);
+
         const isFieldRole = emp.role === 'field_worker' || emp.role === 'field_supervisor';
         let expectedWorkdays = 0;
         const currentWeekDate = new Date(weekStart);
@@ -123,8 +145,9 @@ export function AttendanceReport() {
         }
         const expectedHoursWeek = expectedWorkdays * 8;
 
-        const totalDaysPresent = monthPairs.length;
-        const totalHoursMonth = monthPairs.reduce((sum, pair) => sum + pair.hours, 0);
+        const totalDaysPresent = monthPairs.length + (wfhLogs || []).filter(log => log.status === 'complete').length;
+        const totalHoursMonth = monthPairs.reduce((sum, pair) => sum + pair.hours, 0) +
+                                Array.from(wfhHoursMap.values()).reduce((sum, hours) => sum + hours, 0);
 
         return {
           id: emp.id,
@@ -132,7 +155,7 @@ export function AttendanceReport() {
           full_name: emp.full_name,
           role: emp.role,
           total_days_present: totalDaysPresent,
-          total_hours_week: totalHoursWeek,
+          total_hours_week: totalHoursWeek + wfhHoursWeek,
           expected_hours_week: expectedHoursWeek,
           total_hours_month: totalHoursMonth,
           avg_hours_per_day: totalDaysPresent > 0 ? totalHoursMonth / totalDaysPresent : 0,
@@ -220,6 +243,20 @@ export function AttendanceReport() {
       .lte('timestamp', new Date(year, month, 0, 23, 59, 59).toISOString())
       .order('timestamp');
 
+    const { data: wfhLogs } = await supabase
+      .from('wfh_attendance')
+      .select('date, clock_in_time, clock_out_time, duration_minutes, status')
+      .eq('employee_id', employeeId)
+      .gte('date', `${year}-${String(month).padStart(2, '0')}-01`)
+      .lte('date', `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`);
+
+    const { data: leaveLogs } = await supabase
+      .from('leave_attendance')
+      .select('date')
+      .eq('employee_id', employeeId)
+      .gte('date', `${year}-${String(month).padStart(2, '0')}-01`)
+      .lte('date', `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`);
+
     const dateSiteMap = new Map<string, Map<string, { clock_ins: string[]; clock_outs: string[] }>>();
     (logs || []).forEach((log) => {
       const date = new Date(log.timestamp).toISOString().split('T')[0];
@@ -238,6 +275,16 @@ export function AttendanceReport() {
       }
     });
 
+    const wfhMap = new Map<string, any>();
+    (wfhLogs || []).forEach(log => {
+      wfhMap.set(log.date, log);
+    });
+
+    const leaveSet = new Set<string>();
+    (leaveLogs || []).forEach(log => {
+      leaveSet.add(log.date);
+    });
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -247,15 +294,32 @@ export function AttendanceReport() {
       const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const currentDate = new Date(year, month - 1, day);
       const siteMap = dateSiteMap.get(date);
+      const wfhData = wfhMap.get(date);
+      const isLeave = leaveSet.has(date);
 
-      let status: 'present' | 'absent' | 'incomplete' | 'not_applicable' = 'absent';
+      let status: 'present' | 'absent' | 'incomplete' | 'not_applicable' | 'leave' | 'wfh' | 'incomplete_wfh' = 'absent';
       let hours_worked = 0;
       let hasClockIn = false;
       let hasIncomplete = false;
       let firstClockIn: string | null = null;
       let lastClockOut: string | null = null;
 
-      if (siteMap) {
+      if (isLeave) {
+        status = 'leave';
+      } else if (wfhData) {
+        if (wfhData.status === 'complete' && wfhData.duration_minutes) {
+          status = 'wfh';
+          hours_worked = wfhData.duration_minutes / 60;
+          firstClockIn = wfhData.clock_in_time;
+          lastClockOut = wfhData.clock_out_time;
+        } else if (wfhData.status === 'incomplete') {
+          status = 'incomplete_wfh';
+          firstClockIn = wfhData.clock_in_time;
+        } else if (wfhData.status === 'active') {
+          status = 'wfh';
+          firstClockIn = wfhData.clock_in_time;
+        }
+      } else if (siteMap) {
         siteMap.forEach((siteEntry) => {
           siteEntry.clock_ins.forEach((clockIn, index) => {
             hasClockIn = true;
@@ -271,9 +335,32 @@ export function AttendanceReport() {
             }
           });
         });
-      }
 
-      if (currentDate > today) {
+        if (currentDate > today) {
+          status = 'not_applicable';
+        } else {
+          const dayOfWeek = currentDate.getDay();
+          const isHoliday = isFieldRole ? dayOfWeek === 0 : (dayOfWeek === 0 || dayOfWeek === 6);
+
+          if (isHoliday) {
+            status = 'not_applicable';
+          } else if (hasClockIn && hours_worked > 0) {
+            status = 'present';
+          } else if (hasIncomplete) {
+            status = 'incomplete';
+          } else {
+            const now = new Date();
+            const isToday = currentDate.getTime() === today.getTime();
+            const currentHour = now.getHours();
+
+            if (isToday && currentHour < 18) {
+              status = 'not_applicable';
+            } else {
+              status = 'absent';
+            }
+          }
+        }
+      } else if (currentDate > today) {
         status = 'not_applicable';
       } else {
         const dayOfWeek = currentDate.getDay();
@@ -281,10 +368,6 @@ export function AttendanceReport() {
 
         if (isHoliday) {
           status = 'not_applicable';
-        } else if (hasClockIn && hours_worked > 0) {
-          status = 'present';
-        } else if (hasIncomplete) {
-          status = 'incomplete';
         } else {
           const now = new Date();
           const isToday = currentDate.getTime() === today.getTime();
@@ -523,6 +606,9 @@ export function AttendanceReport() {
                       case 'present': return 'P';
                       case 'incomplete': return 'I';
                       case 'absent': return 'A';
+                      case 'leave': return 'L';
+                      case 'wfh': return 'W';
+                      case 'incomplete_wfh': return 'I-W';
                       case 'not_applicable': return '—';
                       default: return '—';
                     }
@@ -533,6 +619,9 @@ export function AttendanceReport() {
                       case 'present': return 'bg-green-50 border-green-300 text-green-600';
                       case 'incomplete': return 'bg-yellow-50 border-yellow-300 text-yellow-600';
                       case 'absent': return 'bg-red-50 border-red-300 text-red-600';
+                      case 'leave': return 'bg-orange-50 border-orange-300 text-orange-600';
+                      case 'wfh': return 'bg-purple-50 border-purple-300 text-purple-600';
+                      case 'incomplete_wfh': return 'bg-yellow-50 border-yellow-300 text-yellow-600';
                       case 'not_applicable': return 'bg-gray-100 border-gray-300 text-gray-400';
                       default: return 'bg-gray-100 border-gray-300 text-gray-400';
                     }
@@ -547,7 +636,7 @@ export function AttendanceReport() {
                       <div className="text-sm sm:text-lg font-bold">
                         {getStatusDisplay()}
                       </div>
-                      {day.status === 'present' && (
+                      {(day.status === 'present' || day.status === 'wfh') && day.hours_worked > 0 && (
                         <div className="text-[9px] sm:text-xs text-gray-600 text-center leading-tight">{formatHoursMinutes(day.hours_worked)}</div>
                       )}
                     </div>
@@ -561,8 +650,16 @@ export function AttendanceReport() {
                   <span className="text-gray-600">P - Present</span>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 bg-purple-50 border border-purple-300 rounded"></div>
+                  <span className="text-gray-600">W - WFH</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 bg-orange-50 border border-orange-300 rounded"></div>
+                  <span className="text-gray-600">L - Leave</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
                   <div className="w-3 h-3 sm:w-4 sm:h-4 bg-yellow-50 border border-yellow-300 rounded"></div>
-                  <span className="text-gray-600">I - Incomplete</span>
+                  <span className="text-gray-600">I/I-W - Incomplete</span>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2">
                   <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-50 border border-red-300 rounded"></div>

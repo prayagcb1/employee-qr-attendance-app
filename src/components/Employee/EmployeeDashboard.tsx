@@ -4,7 +4,9 @@ import { supabase } from '../../lib/supabase';
 import { QRScanner } from '../Scanner/QRScanner';
 import { WasteManagementForm } from './WasteManagementForm';
 import { PasswordChangeForm } from './PasswordChangeForm';
-import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { LeaveRequestForm } from './LeaveRequestForm';
+import { WFHButton } from './WFHButton';
+import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, Home, Briefcase } from 'lucide-react';
 
 interface AttendanceLog {
   id: string;
@@ -28,6 +30,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
   const [showScanner, setShowScanner] = useState(false);
   const [showWasteForm, setShowWasteForm] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showLeaveRequestForm, setShowLeaveRequestForm] = useState(false);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -35,10 +38,12 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
   const [currentSiteId, setCurrentSiteId] = useState<string | null>(null);
   const [monthlyStats, setMonthlyStats] = useState({ daysWorked: 0, totalClockIns: 0 });
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [todayLeaveWFHStatus, setTodayLeaveWFHStatus] = useState<'none' | 'leave' | 'wfh'>('none');
 
   useEffect(() => {
     fetchLogs();
     checkCurrentStatus();
+    checkTodayLeaveWFHStatus();
   }, [employee]);
 
   useEffect(() => {
@@ -173,6 +178,41 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
         totalClockIns: data.length,
       });
     }
+  };
+
+  const checkTodayLeaveWFHStatus = async () => {
+    if (!employee) return;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data: leaveData } = await supabase
+      .from('leave_attendance')
+      .select('id')
+      .eq('employee_id', employee.id)
+      .eq('date', today)
+      .maybeSingle();
+
+    if (leaveData) {
+      setTodayLeaveWFHStatus('leave');
+      return;
+    }
+
+    const { data: approvedWFH } = await supabase
+      .from('leave_requests')
+      .select('id')
+      .eq('employee_id', employee.id)
+      .eq('request_type', 'wfh')
+      .eq('status', 'approved')
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .maybeSingle();
+
+    if (approvedWFH) {
+      setTodayLeaveWFHStatus('wfh');
+      return;
+    }
+
+    setTodayLeaveWFHStatus('none');
   };
 
   const handleScan = async (qrData: string) => {
@@ -403,25 +443,49 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            <button
-              onClick={() => setShowScanner(true)}
-              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
-            >
-              <ScanLine className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>Scan Site QR Code</span>
-            </button>
-
-            {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
+          {todayLeaveWFHStatus === 'leave' ? (
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-center gap-3 text-white">
+                <Briefcase className="w-8 h-8" />
+                <div className="text-center">
+                  <p className="text-xl font-bold">On Leave Today</p>
+                  <p className="text-sm opacity-90">Enjoy your time off</p>
+                </div>
+              </div>
+            </div>
+          ) : todayLeaveWFHStatus === 'wfh' ? (
+            <div className="space-y-4">
+              <WFHButton employeeId={employee!.id} date={new Date().toISOString().split('T')[0]} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <button
-                onClick={() => setShowWasteForm(true)}
-                className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
+                onClick={() => setShowScanner(true)}
+                className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
               >
-                <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span>Waste Management Form</span>
+                <ScanLine className="w-5 h-5 sm:w-6 sm:h-6" />
+                <span>Scan Site QR Code</span>
               </button>
-            )}
-          </div>
+
+              {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
+                <button
+                  onClick={() => setShowWasteForm(true)}
+                  className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
+                >
+                  <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span>Waste Management Form</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={() => setShowLeaveRequestForm(true)}
+            className="w-full bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base mt-3 sm:mt-4"
+          >
+            <CalendarCheck className="w-5 h-5 sm:w-6 sm:h-6" />
+            <span>Request Leave or WFH</span>
+          </button>
 
           {message && (
             <div className={`mt-4 p-4 rounded-lg ${
@@ -527,6 +591,18 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
           onClose={() => setShowPasswordForm(false)}
           onSuccess={() => {
             setMessage({ type: 'success', text: 'Password updated successfully' });
+            setTimeout(() => setMessage(null), 5000);
+          }}
+        />
+      )}
+
+      {showLeaveRequestForm && (
+        <LeaveRequestForm
+          employeeId={employee!.id}
+          employeeRole={employee!.role}
+          onClose={() => setShowLeaveRequestForm(false)}
+          onSuccess={() => {
+            setMessage({ type: 'success', text: 'Request submitted successfully' });
             setTimeout(() => setMessage(null), 5000);
           }}
         />
