@@ -286,7 +286,15 @@ export function AttendanceReport() {
         } else if (hasIncomplete) {
           status = 'incomplete';
         } else {
-          status = 'absent';
+          const now = new Date();
+          const isToday = currentDate.getTime() === today.getTime();
+          const currentHour = now.getHours();
+
+          if (isToday && currentHour < 18) {
+            status = 'not_applicable';
+          } else {
+            status = 'absent';
+          }
         }
       }
 
