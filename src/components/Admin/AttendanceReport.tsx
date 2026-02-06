@@ -394,17 +394,17 @@ export function AttendanceReport() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="w-full min-w-[640px]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Employee</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Days</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Week</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Month</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Avg/Day</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider">Last Active</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">Employee</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">Role</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">Days</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">Week</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">Month</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">Avg/Day</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">Last Active</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -421,28 +421,28 @@ export function AttendanceReport() {
                       onClick={() => handleRowClick(emp)}
                       className="hover:bg-gray-50 cursor-pointer transition"
                     >
-                      <td className="px-3 sm:px-4 py-2 sm:py-3">
-                        <div className="font-medium text-sm sm:text-base text-gray-900">{emp.full_name}</div>
-                        <div className="text-xs sm:text-sm text-gray-500">{emp.employee_code}</div>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="font-medium text-sm text-gray-900">{emp.full_name}</div>
+                        <div className="text-xs text-gray-500">{emp.employee_code}</div>
                       </td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3">
-                        <span className="inline-flex px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                           {formatRole(emp.role)}
                         </span>
                       </td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-center font-medium text-sm sm:text-base text-gray-900">
+                      <td className="px-4 py-3 text-center font-medium text-sm text-gray-900 whitespace-nowrap">
                         {emp.total_days_present}
                       </td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-center font-medium text-xs sm:text-sm text-gray-900">
+                      <td className="px-4 py-3 text-center font-medium text-sm text-gray-900 whitespace-nowrap">
                         {formatHoursMinutes(emp.total_hours_week)}
                       </td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-center font-medium text-xs sm:text-sm text-gray-900">
+                      <td className="px-4 py-3 text-center font-medium text-sm text-gray-900 whitespace-nowrap">
                         {formatHoursMinutes(emp.total_hours_month)}
                       </td>
-                      <td className={`px-3 sm:px-4 py-2 sm:py-3 text-center font-semibold text-xs sm:text-sm ${getAvgHoursColor(emp.avg_hours_per_day)}`}>
+                      <td className={`px-4 py-3 text-center font-semibold text-sm whitespace-nowrap ${getAvgHoursColor(emp.avg_hours_per_day)}`}>
                         {formatHoursMinutes(emp.avg_hours_per_day)}
                       </td>
-                      <td className={`px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm ${getInactiveColor(emp.last_active_date)}`}>
+                      <td className={`px-4 py-3 text-center text-sm whitespace-nowrap ${getInactiveColor(emp.last_active_date)}`}>
                         {emp.last_active_date
                           ? new Date(emp.last_active_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                           : 'Never'}
