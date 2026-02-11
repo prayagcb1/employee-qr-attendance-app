@@ -231,23 +231,34 @@ function createMonthSheet(
   return rows;
 }
 
-function getColorForStatus(status: string): string | null {
+function getTextColorForStatus(status: string): string {
   switch (status) {
-    case 'A':
-      return 'FFFFCCCC';
-    case 'I':
-      return 'FFFFF4CC';
-    case 'L':
-      return 'FFCCE5FF';
+    case 'P':
+      return 'FF006400';
     case 'W':
-      return 'FFF3E5F5';
+      return 'FF00008B';
+    case 'A':
+      return 'FF8B0000';
+    case 'I':
+      return 'FFFF8C00';
+    case 'L':
+      return 'FF808080';
+    case '—':
+      return 'FFC0C0C0';
     default:
-      return null;
+      return 'FF000000';
   }
 }
 
 function applyCellStyles(worksheet: XLSX.WorkSheet, employees: EmployeeData[], daysInMonth: number) {
   const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+
+  const thinBorder = {
+    top: { style: 'thin', color: { rgb: 'FFD0D0D0' } },
+    bottom: { style: 'thin', color: { rgb: 'FFD0D0D0' } },
+    left: { style: 'thin', color: { rgb: 'FFD0D0D0' } },
+    right: { style: 'thin', color: { rgb: 'FFD0D0D0' } }
+  };
 
   for (let R = 0; R <= range.e.r; R++) {
     for (let C = 0; C <= range.e.c; C++) {
@@ -258,24 +269,28 @@ function applyCellStyles(worksheet: XLSX.WorkSheet, employees: EmployeeData[], d
 
       if (R === 0) {
         cell.s = {
-          font: { bold: true },
-          fill: { fgColor: { rgb: 'FFD3D3D3' } },
-          alignment: { horizontal: 'center', vertical: 'center' }
+          font: { bold: true, color: { rgb: 'FF000000' } },
+          fill: { fgColor: { rgb: 'FFFFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: thinBorder
         };
       } else if (C >= 1 && C <= daysInMonth) {
         const status = cell.v as string;
-        const color = getColorForStatus(status);
+        const textColor = getTextColorForStatus(status);
 
-        if (color) {
-          cell.s = {
-            fill: { fgColor: { rgb: color } },
-            alignment: { horizontal: 'center', vertical: 'center' }
-          };
-        } else {
-          cell.s = {
-            alignment: { horizontal: 'center', vertical: 'center' }
-          };
-        }
+        cell.s = {
+          font: { bold: true, color: { rgb: textColor } },
+          fill: { fgColor: { rgb: 'FFFFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: thinBorder
+        };
+      } else {
+        cell.s = {
+          font: { color: { rgb: 'FF000000' } },
+          fill: { fgColor: { rgb: 'FFFFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: thinBorder
+        };
       }
     }
   }
