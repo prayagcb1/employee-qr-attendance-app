@@ -10,7 +10,7 @@ interface EmployeeData {
 
 interface MonthlyData {
   [employeeId: string]: {
-    [day: number]: 'P' | 'A' | 'I' | 'L' | '—';
+    [day: number]: 'P' | 'A' | 'I' | 'L' | 'W' | '—';
   };
 }
 
@@ -100,7 +100,7 @@ async function fetchMonthlyAttendance(
       const wfhData = wfhMap.get(date);
       const isLeave = leaveSet.has(date);
 
-      let status: 'P' | 'A' | 'I' | 'L' | '—' = 'A';
+      let status: 'P' | 'A' | 'I' | 'L' | 'W' | '—' = 'A';
       let hasClockIn = false;
       let hasIncomplete = false;
       let hours_worked = 0;
@@ -109,7 +109,7 @@ async function fetchMonthlyAttendance(
         status = 'L';
       } else if (wfhData) {
         if (wfhData.status === 'complete') {
-          status = 'P';
+          status = 'W';
         } else if (wfhData.status === 'incomplete') {
           status = 'I';
         }
@@ -219,7 +219,7 @@ function createMonthSheet(
       const status = employeeData[day] || '—';
       row.push(status);
 
-      if (status === 'P') totalP++;
+      if (status === 'P' || status === 'W') totalP++;
       else if (status === 'A') totalA++;
       else if (status === 'I') totalI++;
     }
@@ -231,20 +231,18 @@ function createMonthSheet(
   return rows;
 }
 
-function getColorForStatus(status: string): string {
+function getColorForStatus(status: string): string | null {
   switch (status) {
-    case 'P':
-      return 'FF90EE90';
     case 'A':
-      return 'FFFF6B6B';
+      return 'FFFFCCCC';
     case 'I':
-      return 'FFFFEB3B';
+      return 'FFFFF4CC';
     case 'L':
-      return 'FFB39DDB';
-    case '—':
-      return 'FFE0E0E0';
+      return 'FFCCE5FF';
+    case 'W':
+      return 'FFF3E5F5';
     default:
-      return 'FFFFFFFF';
+      return null;
   }
 }
 
@@ -266,10 +264,18 @@ function applyCellStyles(worksheet: XLSX.WorkSheet, employees: EmployeeData[], d
         };
       } else if (C >= 1 && C <= daysInMonth) {
         const status = cell.v as string;
-        cell.s = {
-          fill: { fgColor: { rgb: getColorForStatus(status) } },
-          alignment: { horizontal: 'center', vertical: 'center' }
-        };
+        const color = getColorForStatus(status);
+
+        if (color) {
+          cell.s = {
+            fill: { fgColor: { rgb: color } },
+            alignment: { horizontal: 'center', vertical: 'center' }
+          };
+        } else {
+          cell.s = {
+            alignment: { horizontal: 'center', vertical: 'center' }
+          };
+        }
       }
     }
   }
