@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { QRScanner } from '../Scanner/QRScanner';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Camera, CheckCircle, XCircle, Clock, MapPin, Calendar } from 'lucide-react';
+import { LeaveRequestForm } from '../Employee/LeaveRequestForm';
+import { LeaveStatusView } from '../Employee/LeaveStatusView';
+import { Camera, CheckCircle, XCircle, Clock, MapPin, Calendar, CalendarCheck, FileText } from 'lucide-react';
 
 interface Message {
   type: 'success' | 'error';
@@ -40,6 +42,8 @@ export function QRAttendanceScanner() {
   const [processing, setProcessing] = useState(false);
   const [logs, setLogs] = useState<GroupedLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
+  const [showLeaveRequestForm, setShowLeaveRequestForm] = useState(false);
+  const [showLeaveStatus, setShowLeaveStatus] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -208,6 +212,10 @@ export function QRAttendanceScanner() {
     }
   };
 
+  if (showLeaveStatus) {
+    return <LeaveStatusView onBack={() => setShowLeaveStatus(false)} />;
+  }
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
       <div className="max-w-2xl mx-auto">
@@ -265,7 +273,45 @@ export function QRAttendanceScanner() {
             <li>Your attendance will be recorded with location</li>
           </ol>
         </div>
+
+        {loggedInEmployee?.role === 'admin' && (
+          <div className="mt-6 sm:mt-8">
+            <h3 className="font-semibold text-gray-900 mb-4 text-sm sm:text-base">My Leave & WFH Requests</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <button
+                onClick={() => setShowLeaveRequestForm(true)}
+                className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
+                <CalendarCheck className="w-5 h-5" />
+                <span>Request Leave or WFH</span>
+              </button>
+
+              <button
+                onClick={() => setShowLeaveStatus(true)}
+                className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
+                <FileText className="w-5 h-5" />
+                <span>View Request Status</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {showLeaveRequestForm && loggedInEmployee && (
+        <div className="max-w-2xl mx-auto mt-6">
+          <LeaveRequestForm
+            employeeId={loggedInEmployee.id}
+            employeeRole={loggedInEmployee.role}
+            onClose={() => setShowLeaveRequestForm(false)}
+            onSuccess={() => {
+              setShowLeaveRequestForm(false);
+              setMessage({ type: 'success', text: 'Request submitted successfully' });
+              setTimeout(() => setMessage(null), 5000);
+            }}
+          />
+        </div>
+      )}
 
       <div className="mt-8 max-w-4xl mx-auto">
         <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">My Recent Attendance</h3>
