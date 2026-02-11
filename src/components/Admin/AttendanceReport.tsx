@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Search, Filter, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { exportAttendanceToExcel } from '../../utils/excelExport';
+import { Search, Filter, X, ChevronLeft, ChevronRight, Calendar, FileDown, Check } from 'lucide-react';
 
 interface EmployeeAttendance {
   id: string;
@@ -36,6 +37,9 @@ export function AttendanceReport() {
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeAttendance | null>(null);
   const [dailyAttendance, setDailyAttendance] = useState<DailyAttendance[]>([]);
   const [showDetail, setShowDetail] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [selectedMonthsForExport, setSelectedMonthsForExport] = useState<string[]>([]);
+  const [exporting, setExporting] = useState(false);
 
   const roles = ['all', 'field_worker', 'field_supervisor', 'intern', 'office_employee', 'admin', 'manager'];
   const roleOrder: Record<string, number> = {
@@ -441,19 +445,68 @@ export function AttendanceReport() {
     return 'text-green-600';
   }
 
+  function generateAvailableMonths(): string[] {
+    const months: string[] = [];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    for (let year = currentYear; year >= currentYear - 1; year--) {
+      const startMonth = year === currentYear ? currentMonth : 12;
+      const endMonth = year === currentYear - 1 ? Math.max(1, currentMonth - 11) : 1;
+
+      for (let month = startMonth; month >= endMonth; month--) {
+        months.push(`${year}-${String(month).padStart(2, '0')}`);
+      }
+    }
+
+    return months;
+  }
+
+  function toggleMonthForExport(month: string) {
+    setSelectedMonthsForExport(prev =>
+      prev.includes(month)
+        ? prev.filter(m => m !== month)
+        : [...prev, month]
+    );
+  }
+
+  async function handleExport() {
+    if (selectedMonthsForExport.length === 0) return;
+
+    setExporting(true);
+    const result = await exportAttendanceToExcel(selectedMonthsForExport);
+    setExporting(false);
+
+    if (result.success) {
+      setShowExportModal(false);
+      setSelectedMonthsForExport([]);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
         <div className="flex flex-col gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search by name or employee code..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search by name or employee code..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition whitespace-nowrap"
+            >
+              <FileDown className="w-4 h-4" />
+              <span className="hidden sm:inline">Export Excel</span>
+              <span className="sm:hidden">Export</span>
+            </button>
           </div>
 
           <div className="flex gap-2">
@@ -682,6 +735,95 @@ export function AttendanceReport() {
                   <span className="text-gray-600">— - Weekend/Future</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Export Attendance to Excel</h3>
+              <button
+                onClick={() => {
+                  setShowExportModal(false);
+                  setSelectedMonthsForExport([]);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-y-auto">
+              <p className="text-sm text-gray-600 mb-4">
+                Select the months you want to include in the Excel export. Each month will be added as a separate sheet.
+              </p>
+
+              <div className="space-y-2">
+                {generateAvailableMonths().map(month => {
+                  const [year, monthNum] = month.split('-').map(Number);
+                  const monthDate = new Date(year, monthNum - 1, 1);
+                  const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                  const isSelected = selectedMonthsForExport.includes(month);
+
+                  return (
+                    <button
+                      key={month}
+                      onClick={() => toggleMonthForExport(month)}
+                      className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition ${
+                        isSelected
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <span className={`font-medium ${isSelected ? 'text-green-900' : 'text-gray-700'}`}>
+                        {monthLabel}
+                      </span>
+                      {isSelected && (
+                        <Check className="w-5 h-5 text-green-600" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowExportModal(false);
+                    setSelectedMonthsForExport([]);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExport}
+                  disabled={selectedMonthsForExport.length === 0 || exporting}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition font-semibold flex items-center justify-center gap-2"
+                >
+                  {exporting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="w-4 h-4" />
+                      Export {selectedMonthsForExport.length} {selectedMonthsForExport.length === 1 ? 'Month' : 'Months'}
+                    </>
+                  )}
+                </button>
+              </div>
+              {selectedMonthsForExport.length > 0 && (
+                <p className="text-xs text-gray-600 mt-2 text-center">
+                  {selectedMonthsForExport.length} month{selectedMonthsForExport.length === 1 ? '' : 's'} selected
+                </p>
+              )}
             </div>
           </div>
         </div>
