@@ -340,10 +340,19 @@ export function AttendanceReport() {
           status = 'not_applicable';
         } else {
           const dayOfWeek = currentDate.getDay();
-          const isHoliday = isFieldRole ? dayOfWeek === 0 : (dayOfWeek === 0 || dayOfWeek === 6);
+          const isSunday = dayOfWeek === 0;
+          const isSaturday = dayOfWeek === 6;
 
-          if (isHoliday) {
+          if (isSunday) {
             status = 'not_applicable';
+          } else if (isSaturday && !isFieldRole) {
+            if (hasClockIn && hours_worked > 0) {
+              status = 'present';
+            } else if (hasIncomplete) {
+              status = 'incomplete';
+            } else {
+              status = 'not_applicable';
+            }
           } else if (hasClockIn && hours_worked > 0) {
             status = 'present';
           } else if (hasIncomplete) {
@@ -364,9 +373,12 @@ export function AttendanceReport() {
         status = 'not_applicable';
       } else {
         const dayOfWeek = currentDate.getDay();
-        const isHoliday = isFieldRole ? dayOfWeek === 0 : (dayOfWeek === 0 || dayOfWeek === 6);
+        const isSunday = dayOfWeek === 0;
+        const isSaturday = dayOfWeek === 6;
 
-        if (isHoliday) {
+        if (isSunday) {
+          status = 'not_applicable';
+        } else if (isSaturday && !isFieldRole) {
           status = 'not_applicable';
         } else {
           const now = new Date();
