@@ -9,16 +9,17 @@ import { QRAttendanceScanner } from './QRAttendanceScanner';
 import { LeaveApprovalView } from './LeaveApprovalView';
 import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, CalendarCheck } from 'lucide-react';
 
-type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'leave-approvals';
+type Tab = 'attendance' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'leave-approvals';
+type AttendanceSubTab = 'logs' | 'report';
 
 export function AdminDashboard() {
   const { employee, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('qr-scanner');
+  const [attendanceSubTab, setAttendanceSubTab] = useState<AttendanceSubTab>('logs');
 
   const tabs = [
     { id: 'qr-scanner' as Tab, label: 'QR Scanner', icon: QrCode },
     { id: 'attendance' as Tab, label: 'Attendance', icon: Clock },
-    { id: 'attendance-report' as Tab, label: 'Attendance Report', icon: FileText },
     { id: 'leave-approvals' as Tab, label: 'Leave & WFH', icon: CalendarCheck },
     { id: 'sites' as Tab, label: 'Sites', icon: MapPin },
     { id: 'employees' as Tab, label: 'Employees', icon: Users },
@@ -71,8 +72,36 @@ export function AdminDashboard() {
         </div>
 
         <div>
-          {activeTab === 'attendance' && <AttendanceView />}
-          {activeTab === 'attendance-report' && <AttendanceReport />}
+          {activeTab === 'attendance' && (
+            <div>
+              <div className="bg-white rounded-lg shadow-sm mb-6 p-4 border border-gray-200">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setAttendanceSubTab('logs')}
+                    className={`flex-1 px-4 py-2 font-medium rounded-lg transition ${
+                      attendanceSubTab === 'logs'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Attendance Logs
+                  </button>
+                  <button
+                    onClick={() => setAttendanceSubTab('report')}
+                    className={`flex-1 px-4 py-2 font-medium rounded-lg transition ${
+                      attendanceSubTab === 'report'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Attendance Report
+                  </button>
+                </div>
+              </div>
+              {attendanceSubTab === 'logs' && <AttendanceView />}
+              {attendanceSubTab === 'report' && <AttendanceReport />}
+            </div>
+          )}
           {activeTab === 'qr-scanner' && <QRAttendanceScanner />}
           {activeTab === 'leave-approvals' && <LeaveApprovalView currentEmployeeId={employee?.id || ''} />}
           {activeTab === 'sites' && <SiteManagement />}
