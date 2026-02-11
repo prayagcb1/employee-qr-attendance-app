@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { supabase } from '../lib/supabase';
 
 interface EmployeeData {
@@ -231,11 +231,57 @@ function createMonthSheet(
   return rows;
 }
 
+function getColorForStatus(status: string): string {
+  switch (status) {
+    case 'P':
+      return 'FF90EE90';
+    case 'A':
+      return 'FFFF6B6B';
+    case 'I':
+      return 'FFFFEB3B';
+    case 'L':
+      return 'FFB39DDB';
+    case '—':
+      return 'FFE0E0E0';
+    default:
+      return 'FFFFFFFF';
+  }
+}
+
+function applyCellStyles(worksheet: XLSX.WorkSheet, employees: EmployeeData[], daysInMonth: number) {
+  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+
+  for (let R = 0; R <= range.e.r; R++) {
+    for (let C = 0; C <= range.e.c; C++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = worksheet[cellAddress];
+
+      if (!cell) continue;
+
+      if (R === 0) {
+        cell.s = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: 'FFD3D3D3' } },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+      } else if (C >= 1 && C <= daysInMonth) {
+        const status = cell.v as string;
+        cell.s = {
+          fill: { fgColor: { rgb: getColorForStatus(status) } },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+      }
+    }
+  }
+}
+
 export async function exportAttendanceToExcel(monthsToExport: string[]) {
   try {
     const employees = await fetchEmployees();
 
     const workbook = XLSX.utils.book_new();
+    workbook.Workbook = workbook.Workbook || {};
+    workbook.Workbook.Views = workbook.Workbook.Views || [];
 
     for (const monthStr of monthsToExport) {
       const [year, month] = monthStr.split('-').map(Number);
@@ -246,12 +292,20 @@ export async function exportAttendanceToExcel(monthsToExport: string[]) {
 
       const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
 
-      const colWidths = [{ wch: 25 }];
       const daysInMonth = new Date(year, month, 0).getDate();
-      for (let i = 0; i < daysInMonth + 3; i++) {
-        colWidths.push({ wch: 8 });
+
+      const colWidths = [{ wch: 25 }];
+      for (let i = 0; i < daysInMonth; i++) {
+        colWidths.push({ wch: 4 });
       }
+      colWidths.push({ wch: 8 });
+      colWidths.push({ wch: 8 });
+      colWidths.push({ wch: 8 });
       worksheet['!cols'] = colWidths;
+
+      worksheet['!freeze'] = { xSplit: 1, ySplit: 1, state: 'frozen' };
+
+      applyCellStyles(worksheet, employees, daysInMonth);
 
       const monthDate = new Date(year, month - 1, 1);
       const sheetName = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -259,7 +313,9 @@ export async function exportAttendanceToExcel(monthsToExport: string[]) {
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
     }
 
-    XLSX.writeFile(workbook, `Attendance_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(workbook, `Attendance_Report_${new Date().toISOString().split('T')[0]}.xlsx`, {
+      cellStyles: true
+    });
 
     return { success: true };
   } catch (error) {
