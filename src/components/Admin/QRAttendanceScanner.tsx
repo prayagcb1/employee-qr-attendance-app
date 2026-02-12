@@ -270,12 +270,6 @@ export function QRAttendanceScanner() {
           </div>
         )}
 
-        {todayLeaveWFHStatus === 'wfh' && loggedInEmployee && (
-          <div className="mb-6 sm:mb-8">
-            <WFHButton employeeId={loggedInEmployee.id} date={new Date().toISOString().split('T')[0]} />
-          </div>
-        )}
-
         <div className="flex justify-center mb-6 sm:mb-8">
           <button
             onClick={() => setShowScanner(true)}
@@ -292,6 +286,12 @@ export function QRAttendanceScanner() {
             onScan={handleScan}
             onClose={() => setShowScanner(false)}
           />
+        )}
+
+        {todayLeaveWFHStatus === 'wfh' && loggedInEmployee && (
+          <div className="mb-6 sm:mb-8">
+            <WFHButton employeeId={loggedInEmployee.id} date={new Date().toISOString().split('T')[0]} />
+          </div>
         )}
 
         <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-gray-50 rounded-lg">
