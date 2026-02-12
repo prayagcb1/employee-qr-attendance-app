@@ -455,37 +455,40 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
           {todayLeaveWFHStatus === 'leave' ? (
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-center gap-3 text-white">
-                <Briefcase className="w-8 h-8" />
+                <Calendar className="w-8 h-8" />
                 <div className="text-center">
                   <p className="text-xl font-bold">On Leave Today</p>
                   <p className="text-sm opacity-90">Enjoy your time off</p>
                 </div>
               </div>
             </div>
-          ) : todayLeaveWFHStatus === 'wfh' ? (
-            <div className="space-y-4">
-              <WFHButton employeeId={employee!.id} date={new Date().toISOString().split('T')[0]} />
-            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              <button
-                onClick={() => setShowScanner(true)}
-                className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
-              >
-                <ScanLine className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span>Scan Site QR Code</span>
-              </button>
-
-              {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
-                <button
-                  onClick={() => setShowWasteForm(true)}
-                  className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
-                >
-                  <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />
-                  <span>Waste Management Form</span>
-                </button>
+            <>
+              {todayLeaveWFHStatus === 'wfh' && (
+                <div className="mb-3 sm:mb-4">
+                  <WFHButton employeeId={employee!.id} date={new Date().toISOString().split('T')[0]} />
+                </div>
               )}
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                <button
+                  onClick={() => setShowScanner(true)}
+                  className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
+                >
+                  <ScanLine className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span>Scan Site QR Code</span>
+                </button>
+
+                {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
+                  <button
+                    onClick={() => setShowWasteForm(true)}
+                    className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
+                  >
+                    <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span>Waste Management Form</span>
+                  </button>
+                )}
+              </div>
+            </>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
