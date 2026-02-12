@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LeaveRequestForm } from '../Employee/LeaveRequestForm';
 import { LeaveStatusView } from '../Employee/LeaveStatusView';
+import { WFHButton } from '../Employee/WFHButton';
 import { Camera, CheckCircle, XCircle, Clock, MapPin, Calendar, CalendarCheck, FileText } from 'lucide-react';
 
 interface Message {
@@ -44,10 +45,33 @@ export function QRAttendanceScanner() {
   const [loadingLogs, setLoadingLogs] = useState(true);
   const [showLeaveRequestForm, setShowLeaveRequestForm] = useState(false);
   const [showLeaveStatus, setShowLeaveStatus] = useState(false);
+  const [todayLeaveWFHStatus, setTodayLeaveWFHStatus] = useState<'none' | 'leave' | 'wfh'>('none');
 
   useEffect(() => {
     fetchLogs();
+    checkTodayLeaveWFHStatus();
   }, [loggedInEmployee, message]);
+
+  const checkTodayLeaveWFHStatus = async () => {
+    if (!loggedInEmployee) return;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data } = await supabase
+      .from('leave_requests')
+      .select('request_type')
+      .eq('employee_id', loggedInEmployee.id)
+      .eq('status', 'approved')
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .maybeSingle();
+
+    if (data) {
+      setTodayLeaveWFHStatus(data.request_type === 'wfh' ? 'wfh' : 'leave');
+    } else {
+      setTodayLeaveWFHStatus('none');
+    }
+  };
 
   const fetchLogs = async () => {
     if (!loggedInEmployee) return;
@@ -243,6 +267,12 @@ export function QRAttendanceScanner() {
               <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             )}
             <p className="font-medium text-sm sm:text-base">{message.text}</p>
+          </div>
+        )}
+
+        {todayLeaveWFHStatus === 'wfh' && loggedInEmployee && (
+          <div className="mb-6 sm:mb-8">
+            <WFHButton employeeId={loggedInEmployee.id} date={new Date().toISOString().split('T')[0]} />
           </div>
         )}
 
