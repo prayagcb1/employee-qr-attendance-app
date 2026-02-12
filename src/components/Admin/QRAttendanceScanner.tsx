@@ -59,15 +59,22 @@ export function QRAttendanceScanner() {
 
     const { data } = await supabase
       .from('leave_requests')
-      .select('request_type')
+      .select('request_type, start_date, end_date')
       .eq('employee_id', loggedInEmployee.id)
       .eq('status', 'approved')
-      .lte('start_date', today)
-      .gte('end_date', today)
-      .maybeSingle();
+      .lte('start_date', today);
 
-    if (data) {
-      setTodayLeaveWFHStatus(data.request_type === 'wfh' ? 'wfh' : 'leave');
+    if (data && data.length > 0) {
+      const activeRequest = data.find(req => {
+        const endDate = req.end_date || req.start_date;
+        return endDate >= today;
+      });
+
+      if (activeRequest) {
+        setTodayLeaveWFHStatus(activeRequest.request_type === 'wfh' ? 'wfh' : 'leave');
+      } else {
+        setTodayLeaveWFHStatus('none');
+      }
     } else {
       setTodayLeaveWFHStatus('none');
     }
