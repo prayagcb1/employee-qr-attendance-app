@@ -55,9 +55,13 @@ export function UserProfile({ employeeId, onClose }: UserProfileProps) {
         )
       `)
       .eq('id', employeeId)
-      .single();
+      .maybeSingle();
 
-    if (!error && data) {
+    if (error) {
+      console.error('Error fetching profile:', error);
+    }
+
+    if (data) {
       setProfile({
         ...data,
         site: data.sites as any
@@ -88,17 +92,16 @@ export function UserProfile({ employeeId, onClose }: UserProfileProps) {
             </div>
           ) : profile ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-center mb-6">
-                <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg flex-shrink-0">
                   {profile.full_name.charAt(0).toUpperCase()}
                 </div>
-              </div>
-
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">{profile.full_name}</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  {roleLabels[profile.role] || profile.role}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-bold text-gray-900 truncate">{profile.full_name}</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {roleLabels[profile.role] || profile.role}
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-3 bg-gray-50 rounded-lg p-4">
