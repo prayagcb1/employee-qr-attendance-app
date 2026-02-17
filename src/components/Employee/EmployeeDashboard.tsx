@@ -8,7 +8,8 @@ import { LeaveRequestForm } from './LeaveRequestForm';
 import { LeaveStatusView } from './LeaveStatusView';
 import { WFHButton } from './WFHButton';
 import { LeaveRequestNotifications } from './LeaveRequestNotifications';
-import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, FileText } from 'lucide-react';
+import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, FileText, User } from 'lucide-react';
+import { UserProfile } from '../Shared/UserProfile';
 
 interface AttendanceLog {
   id: string;
@@ -42,6 +43,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [todayLeaveWFHStatus, setTodayLeaveWFHStatus] = useState<'none' | 'leave' | 'wfh'>('none');
   const [showLeaveStatus, setShowLeaveStatus] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -383,6 +385,14 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             </div>
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setShowProfile(true)}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                title="View Profile"
+              >
+                <User className="w-5 h-5" />
+                <span className="hidden sm:inline font-medium">Profile</span>
+              </button>
+              <button
                 onClick={() => setShowPasswordForm(true)}
                 className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
                 title="Change Password"
@@ -634,6 +644,13 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             setMessage({ type: 'success', text: 'Request submitted successfully' });
             setTimeout(() => setMessage(null), 5000);
           }}
+        />
+      )}
+
+      {showProfile && employee && (
+        <UserProfile
+          employeeId={employee.id}
+          onClose={() => setShowProfile(false)}
         />
       )}
     </div>

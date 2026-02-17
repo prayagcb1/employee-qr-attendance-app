@@ -8,7 +8,8 @@ import { WasteFormsView } from './WasteFormsView';
 import { QRAttendanceScanner } from './QRAttendanceScanner';
 import { LeaveApprovalView } from './LeaveApprovalView';
 import { LeaveRequestAdminNotifications } from './LeaveRequestAdminNotifications';
-import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, CalendarCheck } from 'lucide-react';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, CalendarCheck, User } from 'lucide-react';
+import { UserProfile } from '../Shared/UserProfile';
 
 type Tab = 'attendance' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'leave-approvals';
 type AttendanceSubTab = 'logs' | 'report';
@@ -17,6 +18,7 @@ export function AdminDashboard() {
   const { employee, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('qr-scanner');
   const [attendanceSubTab, setAttendanceSubTab] = useState<AttendanceSubTab>('logs');
+  const [showProfile, setShowProfile] = useState(false);
 
   const tabs = [
     { id: 'qr-scanner' as Tab, label: 'QR Scanner', icon: QrCode },
@@ -41,13 +43,23 @@ export function AdminDashboard() {
                 </span>
               </div>
             </div>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="hidden sm:inline font-medium">Sign Out</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowProfile(true)}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                title="View Profile"
+              >
+                <User className="w-5 h-5" />
+                <span className="hidden sm:inline font-medium">Profile</span>
+              </button>
+              <button
+                onClick={signOut}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="hidden sm:inline font-medium">Sign Out</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -117,6 +129,13 @@ export function AdminDashboard() {
           {activeTab === 'waste-forms' && <WasteFormsView />}
         </div>
       </div>
+
+      {showProfile && employee && (
+        <UserProfile
+          employeeId={employee.id}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
     </div>
   );
 }

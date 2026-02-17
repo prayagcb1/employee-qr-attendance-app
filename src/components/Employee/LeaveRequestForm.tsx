@@ -20,10 +20,9 @@ export function LeaveRequestForm({ employeeId, employeeRole, onClose, onSuccess 
   const isFieldRole = employeeRole === 'field_worker' || employeeRole === 'field_supervisor';
   const canRequestWFH = !isFieldRole;
 
-  const getTomorrowDate = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,8 +34,8 @@ export function LeaveRequestForm({ employeeId, employeeRole, onClose, onSuccess 
       return;
     }
 
-    if (new Date(startDate) < new Date(getTomorrowDate())) {
-      setError('Start date must be at least tomorrow');
+    if (new Date(startDate) < new Date(getTodayDate())) {
+      setError('Start date cannot be in the past');
       return;
     }
 
@@ -131,7 +130,7 @@ export function LeaveRequestForm({ employeeId, employeeRole, onClose, onSuccess 
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              min={getTomorrowDate()}
+              min={getTodayDate()}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -146,7 +145,7 @@ export function LeaveRequestForm({ employeeId, employeeRole, onClose, onSuccess 
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              min={startDate || getTomorrowDate()}
+              min={startDate || getTodayDate()}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
