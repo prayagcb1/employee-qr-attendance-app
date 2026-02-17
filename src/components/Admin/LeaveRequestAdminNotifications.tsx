@@ -52,47 +52,55 @@ export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewReques
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
-    const { data, error } = await supabase
+    const { data: requests, error: requestsError } = await supabase
       .from('leave_requests')
-      .select(`
-        id,
-        request_type,
-        start_date,
-        end_date,
-        reason,
-        status,
-        requested_at,
-        employee_id,
-        employees!inner (
-          full_name,
-          employee_code
-        )
-      `)
+      .select('id, request_type, start_date, end_date, reason, status, requested_at, employee_id')
       .eq('status', 'pending')
       .gte('requested_at', threeDaysAgo.toISOString())
       .order('requested_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching pending requests:', error);
+    if (requestsError) {
+      console.error('Error fetching pending requests:', requestsError);
       return;
     }
 
-    if (data) {
-      const formatted = data.map(item => ({
-        id: item.id,
-        request_type: item.request_type,
-        start_date: item.start_date,
-        end_date: item.end_date,
-        reason: item.reason,
-        status: item.status,
-        requested_at: item.requested_at,
-        employee: {
-          full_name: item.employees.full_name,
-          employee_code: item.employees.employee_code
-        }
-      }));
-      setPendingRequests(formatted as any);
+    if (!requests || requests.length === 0) {
+      setPendingRequests([]);
+      return;
     }
+
+    const employeeIds = [...new Set(requests.map(r => r.employee_id))];
+
+    const { data: employees, error: employeesError } = await supabase
+      .from('employees')
+      .select('id, full_name, employee_code')
+      .in('id', employeeIds);
+
+    if (employeesError) {
+      console.error('Error fetching employees:', employeesError);
+      return;
+    }
+
+    const employeeMap = new Map(employees?.map(e => [e.id, e]) || []);
+
+    const formatted = requests.map(request => {
+      const employee = employeeMap.get(request.employee_id);
+      return {
+        id: request.id,
+        request_type: request.request_type,
+        start_date: request.start_date,
+        end_date: request.end_date,
+        reason: request.reason,
+        status: request.status,
+        requested_at: request.requested_at,
+        employee: {
+          full_name: employee?.full_name || 'Unknown',
+          employee_code: employee?.employee_code || 'N/A'
+        }
+      };
+    });
+
+    setPendingRequests(formatted as any);
   };
 
   const handleDismiss = (id: string) => {
