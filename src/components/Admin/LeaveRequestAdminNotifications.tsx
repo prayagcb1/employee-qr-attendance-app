@@ -1,0 +1,174 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Bell, Clock, X } from 'lucide-react';
+
+interface LeaveRequest {
+  id: string;
+  request_type: 'leave' | 'wfh';
+  start_date: string;
+  end_date: string | null;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requested_at: string;
+  employee: {
+    full_name: string;
+    employee_code: string;
+  };
+}
+
+interface LeaveRequestAdminNotificationsProps {
+  currentEmployeeId: string;
+  onViewRequests?: () => void;
+}
+
+export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewRequests }: LeaveRequestAdminNotificationsProps) {
+  const [pendingRequests, setPendingRequests] = useState<LeaveRequest[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchPendingRequests();
+
+    const channel = supabase
+      .channel('leave_requests_admin_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leave_requests'
+        },
+        () => {
+          fetchPendingRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentEmployeeId]);
+
+  const fetchPendingRequests = async () => {
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+    const { data } = await supabase
+      .from('leave_requests')
+      .select(`
+        id,
+        request_type,
+        start_date,
+        end_date,
+        reason,
+        status,
+        requested_at,
+        employee:employees!inner (
+          full_name,
+          employee_code
+        )
+      `)
+      .eq('status', 'pending')
+      .gte('requested_at', oneDayAgo.toISOString())
+      .order('requested_at', { ascending: false });
+
+    if (data) {
+      setPendingRequests(data as any);
+    }
+  };
+
+  const handleDismiss = (id: string) => {
+    setDismissedIds(prev => [...prev, id]);
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const requestTime = new Date(timestamp);
+    const diffMs = now.getTime() - requestTime.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
+
+  const visibleRequests = pendingRequests.filter(r => !dismissedIds.includes(r.id));
+
+  if (visibleRequests.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-3 mb-6">
+      {visibleRequests.map((request) => (
+        <div
+          key={request.id}
+          className="p-4 rounded-lg border-l-4 bg-orange-50 border-orange-500 flex items-start gap-3 cursor-pointer hover:bg-orange-100 transition"
+          onClick={onViewRequests}
+        >
+          <div className="flex-shrink-0 mt-0.5">
+            <Bell className="w-5 h-5 text-orange-600" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-sm text-orange-900">
+                    New {request.request_type === 'wfh' ? 'Work From Home' : 'Leave'} Request
+                  </p>
+                  <span className="text-xs text-orange-600 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {formatTimeAgo(request.requested_at)}
+                  </span>
+                </div>
+
+                <p className="text-sm text-orange-700 mt-1">
+                  <span className="font-semibold">{request.employee.full_name}</span> ({request.employee.employee_code})
+                </p>
+
+                <p className="text-sm text-orange-700 mt-1">
+                  {formatDate(request.start_date)}
+                  {request.end_date && request.end_date !== request.start_date &&
+                    ` - ${formatDate(request.end_date)}`
+                  }
+                </p>
+
+                {request.reason && (
+                  <p className="text-xs text-orange-600 mt-1 line-clamp-1">
+                    {request.reason}
+                  </p>
+                )}
+
+                <p className="text-xs text-orange-600 mt-2 font-medium">
+                  Click to review and approve
+                </p>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDismiss(request.id);
+                }}
+                className="flex-shrink-0 p-1 rounded-full hover:bg-white/50 transition text-orange-600"
+                title="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
