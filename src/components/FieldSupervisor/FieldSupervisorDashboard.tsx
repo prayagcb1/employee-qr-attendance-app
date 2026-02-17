@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { LogOut, ClipboardList, Clock, Lock, Users, MapPin, Calendar, User, Bell } from 'lucide-react';
+import { LogOut, ClipboardList, Clock, Lock, Users, MapPin, Calendar, User } from 'lucide-react';
 import { UserProfile } from '../Shared/UserProfile';
 import { PasswordChangeForm } from '../Employee/PasswordChangeForm';
 import { WasteFormsView } from '../Admin/WasteFormsView';
@@ -9,6 +9,7 @@ import { AttendanceView } from '../Admin/AttendanceView';
 import { EmployeeList } from './EmployeeList';
 import { SiteList } from './SiteList';
 import { LeaveRequestNotifications } from '../Employee/LeaveRequestNotifications';
+import { NotificationDropdown } from '../Shared/NotificationDropdown';
 
 export function FieldSupervisorDashboard() {
   const { employee, signOut } = useAuth();
@@ -39,13 +40,12 @@ export function FieldSupervisorDashboard() {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {}}
-                className="relative flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
-                title="Notifications"
-              >
-                <Bell className="w-5 h-5" />
-              </button>
+              {employee && (
+                <NotificationDropdown
+                  employeeId={employee.id}
+                  employeeRole={employee.role}
+                />
+              )}
               <button
                 onClick={() => setShowPasswordForm(true)}
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"

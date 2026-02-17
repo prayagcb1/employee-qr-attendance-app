@@ -8,8 +8,9 @@ import { LeaveRequestForm } from './LeaveRequestForm';
 import { LeaveStatusView } from './LeaveStatusView';
 import { WFHButton } from './WFHButton';
 import { LeaveRequestNotifications } from './LeaveRequestNotifications';
-import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, FileText, User, Bell } from 'lucide-react';
+import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, FileText, User } from 'lucide-react';
 import { UserProfile } from '../Shared/UserProfile';
+import { NotificationDropdown } from '../Shared/NotificationDropdown';
 
 interface AttendanceLog {
   id: string;
@@ -406,13 +407,12 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {}}
-                className="relative flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
-                title="Notifications"
-              >
-                <Bell className="w-5 h-5" />
-              </button>
+              {employee && (
+                <NotificationDropdown
+                  employeeId={employee.id}
+                  employeeRole={employee.role}
+                />
+              )}
               <button
                 onClick={() => setShowPasswordForm(true)}
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"

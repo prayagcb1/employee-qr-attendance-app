@@ -8,8 +8,9 @@ import { WasteFormsView } from './WasteFormsView';
 import { QRAttendanceScanner } from './QRAttendanceScanner';
 import { LeaveApprovalView } from './LeaveApprovalView';
 import { LeaveRequestAdminNotifications } from './LeaveRequestAdminNotifications';
-import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, CalendarCheck, User, Bell } from 'lucide-react';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, CalendarCheck, User } from 'lucide-react';
 import { UserProfile } from '../Shared/UserProfile';
+import { NotificationDropdown } from '../Shared/NotificationDropdown';
 
 type Tab = 'attendance' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'leave-approvals';
 type AttendanceSubTab = 'logs' | 'report';
@@ -45,20 +46,20 @@ export function AdminDashboard() {
                 </div>
                 <div className="text-left">
                   <p className="text-lg font-bold text-gray-900 leading-tight">{employee?.full_name}</p>
-                  <span className="inline-block px-3 py-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-xs font-bold rounded-full shadow-sm">
+                  <span className="inline-block px-3 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full shadow-sm">
                     Admin
                   </span>
                 </div>
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {}}
-                className="relative flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
-                title="Notifications"
-              >
-                <Bell className="w-5 h-5" />
-              </button>
+              {employee && (
+                <NotificationDropdown
+                  employeeId={employee.id}
+                  employeeRole={employee.role}
+                  onViewRequests={() => setActiveTab('leave-approvals')}
+                />
+              )}
               <button
                 onClick={signOut}
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
