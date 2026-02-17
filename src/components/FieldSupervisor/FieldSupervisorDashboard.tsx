@@ -7,6 +7,7 @@ import { EmployeeDashboard } from '../Employee/EmployeeDashboard';
 import { AttendanceView } from '../Admin/AttendanceView';
 import { EmployeeList } from './EmployeeList';
 import { SiteList } from './SiteList';
+import { LeaveRequestNotifications } from '../Employee/LeaveRequestNotifications';
 
 export function FieldSupervisorDashboard() {
   const { employee, signOut } = useAuth();
@@ -54,6 +55,8 @@ export function FieldSupervisorDashboard() {
       )}
 
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8 sm:px-6 lg:px-8">
+        {employee && <LeaveRequestNotifications employeeId={employee.id} />}
+
         <div className="mb-6">
           <div className="flex gap-2 sm:gap-4 border-b border-gray-200 overflow-x-auto">
             <button

@@ -7,6 +7,7 @@ import { PasswordChangeForm } from './PasswordChangeForm';
 import { LeaveRequestForm } from './LeaveRequestForm';
 import { LeaveStatusView } from './LeaveStatusView';
 import { WFHButton } from './WFHButton';
+import { LeaveRequestNotifications } from './LeaveRequestNotifications';
 import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, FileText } from 'lucide-react';
 
 interface AttendanceLog {
@@ -403,6 +404,8 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
       </header>}
 
       <main className={hideHeader ? '' : 'max-w-7xl mx-auto px-4 py-6 sm:py-8 sm:px-6 lg:px-8'}>
+        {employee && <LeaveRequestNotifications employeeId={employee.id} />}
+
         <div className="mb-6 sm:mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
             <div className={`p-4 sm:p-6 rounded-xl shadow-sm col-span-1 md:col-span-2 ${

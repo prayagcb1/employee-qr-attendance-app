@@ -7,6 +7,7 @@ import { EmployeeManagement } from './EmployeeManagement';
 import { WasteFormsView } from './WasteFormsView';
 import { QRAttendanceScanner } from './QRAttendanceScanner';
 import { LeaveApprovalView } from './LeaveApprovalView';
+import { LeaveRequestNotifications } from '../Employee/LeaveRequestNotifications';
 import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, CalendarCheck } from 'lucide-react';
 
 type Tab = 'attendance' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'leave-approvals';
@@ -52,6 +53,8 @@ export function AdminDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {employee && <LeaveRequestNotifications employeeId={employee.id} />}
+
         <div className="bg-white rounded-lg shadow-sm mb-6 border border-gray-200">
           <nav className="flex border-b border-gray-200 overflow-x-auto">
             {tabs.map(({ id, label, icon: Icon }) => (
