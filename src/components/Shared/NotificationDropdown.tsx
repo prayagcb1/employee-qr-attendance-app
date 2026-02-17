@@ -24,6 +24,7 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log('NotificationDropdown mounted with:', { employeeId, employeeRole });
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
@@ -59,7 +60,7 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
           status,
           created_at,
           employee_id,
-          employees (
+          employees!inner (
             full_name,
             employee_code
           )
@@ -69,16 +70,21 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
 
       if (error) {
         console.error('Error fetching notifications:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+      } else {
+        console.log('Fetched pending requests:', pendingRequests);
       }
 
       if (pendingRequests && pendingRequests.length > 0) {
         pendingRequests.forEach((req: any) => {
           const requestType = req.request_type === 'leave' ? 'Leave' : 'WFH';
+          const employeeName = req.employees?.full_name || 'Unknown';
+          const employeeCode = req.employees?.employee_code || 'N/A';
           allNotifications.push({
             id: req.id,
             type: 'leave_request',
             title: `${requestType} Request Pending`,
-            message: `${req.employees.full_name} (${req.employees.employee_code}) requested ${requestType}`,
+            message: `${employeeName} (${employeeCode}) requested ${requestType}`,
             timestamp: req.created_at,
             data: req
           });
@@ -112,6 +118,8 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
       }
     }
 
+    console.log('All notifications:', allNotifications);
+    console.log('Notification count:', allNotifications.length);
     setNotifications(allNotifications);
     setCount(allNotifications.length);
   };
