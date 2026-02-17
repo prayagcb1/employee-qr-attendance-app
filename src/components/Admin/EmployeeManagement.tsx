@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { User, Mail, Phone, Shield, Plus, Edit, KeyRound, Trash2 } from 'lucide-react';
 
@@ -33,6 +33,7 @@ export function EmployeeManagement() {
   });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchEmployees();
@@ -131,6 +132,9 @@ export function EmployeeManagement() {
       role: employee.role,
     });
     setShowForm(true);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const toggleActive = async (employee: Employee) => {
@@ -238,6 +242,9 @@ export function EmployeeManagement() {
             setShowForm(true);
             setSelectedEmployee(null);
             setFormData({ full_name: '', employee_code: '', username: '', email: '', phone: '', password: '', date_of_joining: new Date().toISOString().split('T')[0], role: 'field_worker' });
+            setTimeout(() => {
+              formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
           }}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
         >
@@ -247,7 +254,7 @@ export function EmployeeManagement() {
       </div>
 
       {showForm && (
-        <div className="mb-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+        <div ref={formRef} className="mb-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
           <h3 className="text-lg font-semibold mb-4">
             {selectedEmployee ? 'Edit Employee' : 'New Employee'}
           </h3>
