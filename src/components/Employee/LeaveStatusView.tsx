@@ -12,6 +12,12 @@ interface LeaveRequest {
   status: 'pending' | 'approved' | 'rejected';
   requested_at: string;
   rejection_reason: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  approver?: {
+    full_name: string;
+    employee_code: string;
+  } | null;
 }
 
 interface LeaveStatusViewProps {
@@ -31,14 +37,37 @@ export function LeaveStatusView({ onBack }: LeaveStatusViewProps) {
     if (!employee) return;
 
     setLoading(true);
-    const { data, error } = await supabase
+    const { data: requests, error } = await supabase
       .from('leave_requests')
       .select('*')
       .eq('employee_id', employee.id)
       .order('requested_at', { ascending: false });
 
-    if (!error && data) {
-      setLeaveRequests(data);
+    if (!error && requests) {
+      const approverIds = requests
+        .filter(r => r.approved_by)
+        .map(r => r.approved_by)
+        .filter((id): id is string => id !== null);
+
+      let approverMap = new Map();
+
+      if (approverIds.length > 0) {
+        const { data: approvers } = await supabase
+          .from('employees')
+          .select('id, full_name, employee_code')
+          .in('id', [...new Set(approverIds)]);
+
+        if (approvers) {
+          approverMap = new Map(approvers.map(a => [a.id, a]));
+        }
+      }
+
+      const enrichedRequests = requests.map(request => ({
+        ...request,
+        approver: request.approved_by ? approverMap.get(request.approved_by) : null
+      }));
+
+      setLeaveRequests(enrichedRequests);
     }
     setLoading(false);
   };
@@ -151,11 +180,46 @@ export function LeaveStatusView({ onBack }: LeaveStatusViewProps) {
                       </div>
                     )}
 
+                    {request.status === 'approved' && request.approver && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-sm text-green-800">
+                          <span className="font-semibold">Approved by:</span> {request.approver.full_name} ({request.approver.employee_code})
+                        </p>
+                        {request.approved_at && (
+                          <p className="text-xs text-green-700 mt-1">
+                            on {new Date(request.approved_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {request.status === 'rejected' && request.rejection_reason && (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                         <p className="text-sm text-red-800">
                           <span className="font-semibold">Rejection Reason:</span> {request.rejection_reason}
                         </p>
+                        {request.approver && (
+                          <p className="text-sm text-red-800 mt-1">
+                            <span className="font-semibold">Rejected by:</span> {request.approver.full_name} ({request.approver.employee_code})
+                          </p>
+                        )}
+                        {request.approved_at && (
+                          <p className="text-xs text-red-700 mt-1">
+                            on {new Date(request.approved_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
