@@ -24,7 +24,6 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    console.log('NotificationDropdown mounted with:', { employeeId, employeeRole });
     if (employeeId && employeeRole) {
       fetchNotifications();
     }
@@ -35,11 +34,6 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
     }, 30000);
     return () => clearInterval(interval);
   }, [employeeId, employeeRole]);
-
-  useEffect(() => {
-    console.log('Notifications state updated:', notifications);
-    console.log('Count state updated:', count);
-  }, [notifications, count]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,12 +52,9 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
   }, [showDropdown]);
 
   const fetchNotifications = async () => {
-    console.log('🔄 fetchNotifications called with:', { employeeId, employeeRole });
     const allNotifications: Notification[] = [];
 
     if (employeeRole === 'admin' || employeeRole === 'manager') {
-      console.log('👤 User is admin/manager, fetching pending requests...');
-
       const { data: pendingRequests, error } = await supabase
         .from('leave_requests')
         .select(`
@@ -83,35 +74,24 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching notifications:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-      } else {
-        console.log('✅ Fetched pending requests:', pendingRequests);
-        console.log('📊 Number of pending requests:', pendingRequests?.length || 0);
+        console.error('Error fetching notifications:', error);
       }
 
       if (pendingRequests && pendingRequests.length > 0) {
-        console.log('🔨 Processing pending requests...');
         pendingRequests.forEach((req: any) => {
           const requestType = req.request_type === 'leave' ? 'Leave' : 'WFH';
           const employeeName = req.employees?.full_name || 'Unknown';
           const employeeCode = req.employees?.employee_code || 'N/A';
-          const notification = {
+          allNotifications.push({
             id: req.id,
             type: 'leave_request' as const,
             title: `${requestType} Request Pending`,
             message: `${employeeName} (${employeeCode}) requested ${requestType}`,
             timestamp: req.created_at,
             data: req
-          };
-          console.log('➕ Adding notification:', notification);
-          allNotifications.push(notification);
+          });
         });
-      } else {
-        console.log('⚠️ No pending requests found or data is empty');
       }
-    } else {
-      console.log('👤 User is not admin/manager, role:', employeeRole);
     }
 
     if (employeeRole !== 'admin' && employeeRole !== 'manager') {
@@ -140,12 +120,8 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
       }
     }
 
-    console.log('📋 Final notifications array:', allNotifications);
-    console.log('📊 Final notification count:', allNotifications.length);
-    console.log('💾 Setting state with:', { notifications: allNotifications, count: allNotifications.length });
     setNotifications(allNotifications);
     setCount(allNotifications.length);
-    console.log('✅ State update triggered');
   };
 
   const getNotificationIcon = (type: string) => {
@@ -176,21 +152,10 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
     return date.toLocaleDateString();
   };
 
-  console.log('🎨 Rendering NotificationDropdown. State:', {
-    showDropdown,
-    notificationsLength: notifications.length,
-    count,
-    employeeId,
-    employeeRole
-  });
-
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => {
-          console.log('🔔 Bell clicked. Current state:', { showDropdown, notifications, count });
-          setShowDropdown(!showDropdown);
-        }}
+        onClick={() => setShowDropdown(!showDropdown)}
         className="relative flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
         title="Notifications"
       >
@@ -203,7 +168,11 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[32rem] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}>
+          <div
+            className="absolute right-4 top-16 w-[calc(100vw-2rem)] sm:w-96 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
           <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
             <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
             <button
@@ -215,22 +184,15 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
           </div>
 
           <div className="overflow-y-auto flex-1">
-            {(() => {
-              console.log('📺 Rendering dropdown content. notifications.length:', notifications.length);
-              console.log('📺 Notifications array:', notifications);
-              return notifications.length === 0;
-            })() ? (
+            {notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p className="font-medium">No notifications</p>
                 <p className="text-sm mt-1">You're all caught up!</p>
-                <p className="text-xs mt-2 text-gray-400">Debug: {JSON.stringify({ count, notificationsLength: notifications.length, role: employeeRole })}</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {notifications.map((notification) => {
-                  console.log('🔖 Rendering notification item:', notification);
-                  return (
+                {notifications.map((notification) => (
                   <div
                     key={notification.id}
                     className="p-4 hover:bg-gray-50 transition cursor-pointer"
@@ -246,10 +208,10 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
                         {getNotificationIcon(notification.type)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 mb-1">
+                        <p className="text-sm font-semibold text-gray-900 mb-1 break-words">
                           {notification.title}
                         </p>
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="text-sm text-gray-600 mb-2 break-words">
                           {notification.message}
                         </p>
                         <p className="text-xs text-gray-400">
@@ -258,8 +220,7 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
                       </div>
                     </div>
                   </div>
-                  );
-                })}
+                ))}
               </div>
             )}
           </div>
@@ -279,6 +240,7 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
               </button>
             </div>
           )}
+          </div>
         </div>
       )}
     </div>
