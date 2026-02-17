@@ -71,10 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (username: string, password: string) => {
+    const normalizedUsername = username.trim().toLowerCase();
+    const normalizedPassword = password.trim();
+
     const { data: employeeData, error: employeeError } = await supabase
       .from('employees')
       .select('email, username')
-      .ilike('username', username)
+      .ilike('username', normalizedUsername)
       .limit(1)
       .maybeSingle();
 
@@ -91,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { error } = await supabase.auth.signInWithPassword({
       email: email,
-      password,
+      password: normalizedPassword,
     });
 
     if (error) {
