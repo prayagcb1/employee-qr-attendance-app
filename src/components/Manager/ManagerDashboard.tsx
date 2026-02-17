@@ -56,7 +56,7 @@ export function ManagerDashboard() {
                 <NotificationDropdown
                   employeeId={employee.id}
                   employeeRole={employee.role}
-                  onViewRequests={() => setActiveTab('leave-approvals')}
+                  onViewLeaveRequests={() => setActiveTab('leave-approvals')}
                 />
               )}
               <button
