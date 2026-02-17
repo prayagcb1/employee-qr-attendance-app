@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { LogOut, ClipboardList, Clock, Lock, Users, MapPin, Calendar, User } from 'lucide-react';
+import { LogOut, ClipboardList, Clock, Lock, Users, MapPin, Calendar, User, Bell } from 'lucide-react';
 import { UserProfile } from '../Shared/UserProfile';
 import { PasswordChangeForm } from '../Employee/PasswordChangeForm';
 import { WasteFormsView } from '../Admin/WasteFormsView';
@@ -32,11 +32,20 @@ export function FieldSupervisorDashboard() {
                 </div>
                 <div className="text-left">
                   <p className="text-lg font-bold text-gray-900 leading-tight">{employee?.full_name}</p>
-                  <p className="text-xs text-gray-600">Field Supervisor</p>
+                  <span className="inline-block px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-bold rounded-full shadow-sm">
+                    Field Supervisor
+                  </span>
                 </div>
               </button>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {}}
+                className="relative flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+              </button>
               <button
                 onClick={() => setShowPasswordForm(true)}
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"

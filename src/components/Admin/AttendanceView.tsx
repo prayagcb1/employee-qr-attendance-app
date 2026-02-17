@@ -365,7 +365,8 @@ export function AttendanceView() {
                 onClick={() => {
                   setSelectedEmployee(null);
                   setDateFilter('');
-                  setSelectedMonth('');
+                  const now = new Date();
+                  setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
                   setMonthlyStats(null);
                   setLogs([]);
                 }}
@@ -411,24 +412,28 @@ export function AttendanceView() {
                 type="date"
                 value={dateFilter}
                 onChange={(e) => {
-                  setDateFilter(e.target.value);
-                  setSelectedMonth('');
-                  setMonthlyStats(null);
+                  const newDateFilter = e.target.value;
+                  setDateFilter(newDateFilter);
+                  if (newDateFilter) {
+                    setMonthlyStats(null);
+                  }
                 }}
+                placeholder="Filter by specific date"
                 max={getTodayDate()}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
 
-              {(dateFilter || selectedMonth) && (
+              {dateFilter && (
                 <button
                   onClick={() => {
                     setDateFilter('');
-                    setSelectedMonth('');
+                    const now = new Date();
+                    setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
                     setMonthlyStats(null);
                   }}
                   className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium text-sm bg-blue-50 rounded-lg"
                 >
-                  Clear
+                  Clear Date
                 </button>
               )}
             </div>

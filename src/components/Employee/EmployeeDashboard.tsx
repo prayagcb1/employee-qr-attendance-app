@@ -8,7 +8,7 @@ import { LeaveRequestForm } from './LeaveRequestForm';
 import { LeaveStatusView } from './LeaveStatusView';
 import { WFHButton } from './WFHButton';
 import { LeaveRequestNotifications } from './LeaveRequestNotifications';
-import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, FileText, User } from 'lucide-react';
+import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, FileText, User, Bell } from 'lucide-react';
 import { UserProfile } from '../Shared/UserProfile';
 
 interface AttendanceLog {
@@ -382,16 +382,37 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
                 </div>
                 <div className="text-left">
                   <p className="text-lg font-bold text-gray-900 leading-tight">{employee?.full_name}</p>
-                  <p className="text-xs text-gray-600">
-                    {employee?.role === 'field_worker' && 'Field Worker'}
-                    {employee?.role === 'field_supervisor' && 'Field Supervisor'}
-                    {employee?.role === 'intern' && 'Intern'}
-                    {employee?.role === 'office_employee' && 'Office Employee'}
-                  </p>
+                  {employee?.role === 'field_worker' && (
+                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-bold rounded-full shadow-sm">
+                      Field Worker
+                    </span>
+                  )}
+                  {employee?.role === 'field_supervisor' && (
+                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-bold rounded-full shadow-sm">
+                      Field Supervisor
+                    </span>
+                  )}
+                  {employee?.role === 'intern' && (
+                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-bold rounded-full shadow-sm">
+                      Intern
+                    </span>
+                  )}
+                  {employee?.role === 'office_employee' && (
+                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white text-xs font-bold rounded-full shadow-sm">
+                      Office Employee
+                    </span>
+                  )}
                 </div>
               </button>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {}}
+                className="relative flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+              </button>
               <button
                 onClick={() => setShowPasswordForm(true)}
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"

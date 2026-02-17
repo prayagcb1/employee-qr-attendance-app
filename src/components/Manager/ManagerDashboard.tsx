@@ -8,7 +8,7 @@ import { WasteFormsView } from '../Admin/WasteFormsView';
 import { QRAttendanceScanner } from '../Admin/QRAttendanceScanner';
 import { LeaveApprovalView } from '../Admin/LeaveApprovalView';
 import { LeaveRequestAdminNotifications } from '../Admin/LeaveRequestAdminNotifications';
-import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, CalendarCheck, User } from 'lucide-react';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, CalendarCheck, User, Bell } from 'lucide-react';
 import { UserProfile } from '../Shared/UserProfile';
 
 type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'leave-approvals';
@@ -44,17 +44,28 @@ export function ManagerDashboard() {
                 </div>
                 <div className="text-left">
                   <p className="text-lg font-bold text-gray-900 leading-tight">{employee?.full_name}</p>
-                  <p className="text-xs text-gray-600">Manager</p>
+                  <span className="inline-block px-3 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold rounded-full shadow-sm">
+                    Manager
+                  </span>
                 </div>
               </button>
             </div>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
-              title="Sign Out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {}}
+                className="relative flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+              </button>
+              <button
+                onClick={signOut}
+                className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                title="Sign Out"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
