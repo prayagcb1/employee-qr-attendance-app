@@ -49,7 +49,7 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
     const allNotifications: Notification[] = [];
 
     if (employeeRole === 'admin' || employeeRole === 'manager') {
-      const { data: pendingRequests } = await supabase
+      const { data: pendingRequests, error } = await supabase
         .from('leave_requests')
         .select(`
           id,
@@ -58,13 +58,18 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
           end_date,
           status,
           created_at,
-          employees!inner (
+          employee_id,
+          employees (
             full_name,
             employee_code
           )
         `)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching notifications:', error);
+      }
 
       if (pendingRequests && pendingRequests.length > 0) {
         pendingRequests.forEach((req: any) => {
