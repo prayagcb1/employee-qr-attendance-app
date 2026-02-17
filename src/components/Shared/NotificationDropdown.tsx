@@ -25,10 +25,21 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
 
   useEffect(() => {
     console.log('NotificationDropdown mounted with:', { employeeId, employeeRole });
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
+    if (employeeId && employeeRole) {
+      fetchNotifications();
+    }
+    const interval = setInterval(() => {
+      if (employeeId && employeeRole) {
+        fetchNotifications();
+      }
+    }, 30000);
     return () => clearInterval(interval);
   }, [employeeId, employeeRole]);
+
+  useEffect(() => {
+    console.log('Notifications state updated:', notifications);
+    console.log('Count state updated:', count);
+  }, [notifications, count]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -155,7 +166,10 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setShowDropdown(!showDropdown)}
+        onClick={() => {
+          console.log('Bell clicked. Current state:', { showDropdown, notifications, count });
+          setShowDropdown(!showDropdown);
+        }}
         className="relative flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
         title="Notifications"
       >
@@ -185,10 +199,13 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
                 <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p className="font-medium">No notifications</p>
                 <p className="text-sm mt-1">You're all caught up!</p>
+                <p className="text-xs mt-2 text-gray-400">Debug: {JSON.stringify({ count, notificationsLength: notifications.length })}</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {notifications.map((notification) => (
+                {notifications.map((notification) => {
+                  console.log('Rendering notification:', notification);
+                  return (
                   <div
                     key={notification.id}
                     className="p-4 hover:bg-gray-50 transition cursor-pointer"
@@ -216,7 +233,8 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
