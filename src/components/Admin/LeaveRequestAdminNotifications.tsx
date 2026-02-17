@@ -49,10 +49,10 @@ export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewReques
   }, [currentEmployeeId]);
 
   const fetchPendingRequests = async () => {
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('leave_requests')
       .select(`
         id,
@@ -62,17 +62,36 @@ export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewReques
         reason,
         status,
         requested_at,
-        employee:employees!inner (
+        employee_id,
+        employees!inner (
           full_name,
           employee_code
         )
       `)
       .eq('status', 'pending')
-      .gte('requested_at', oneDayAgo.toISOString())
+      .gte('requested_at', threeDaysAgo.toISOString())
       .order('requested_at', { ascending: false });
 
+    if (error) {
+      console.error('Error fetching pending requests:', error);
+      return;
+    }
+
     if (data) {
-      setPendingRequests(data as any);
+      const formatted = data.map(item => ({
+        id: item.id,
+        request_type: item.request_type,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        reason: item.reason,
+        status: item.status,
+        requested_at: item.requested_at,
+        employee: {
+          full_name: item.employees.full_name,
+          employee_code: item.employees.employee_code
+        }
+      }));
+      setPendingRequests(formatted as any);
     }
   };
 
