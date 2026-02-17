@@ -371,13 +371,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
       {!hideHeader && <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              {employee?.role === 'field_worker' && 'Field Worker'}
-              {employee?.role === 'field_supervisor' && 'Field Supervisor'}
-              {employee?.role === 'intern' && 'Intern'}
-              {employee?.role === 'office_employee' && 'Office Employee'}
-            </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowProfile(true)}
                 className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition"
@@ -386,8 +380,8 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm flex-shrink-0">
                   {employee?.full_name.charAt(0).toUpperCase()}
                 </div>
-                <div className="text-left hidden sm:block">
-                  <p className="text-sm font-semibold text-gray-900 leading-tight">{employee?.full_name}</p>
+                <div className="text-left">
+                  <p className="text-lg font-bold text-gray-900 leading-tight">{employee?.full_name}</p>
                   <p className="text-xs text-gray-600">
                     {employee?.role === 'field_worker' && 'Field Worker'}
                     {employee?.role === 'field_supervisor' && 'Field Supervisor'}
@@ -396,6 +390,8 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
                   </p>
                 </div>
               </button>
+            </div>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowPasswordForm(true)}
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
