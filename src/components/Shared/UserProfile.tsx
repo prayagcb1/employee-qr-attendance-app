@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Briefcase, Calendar, MapPin, Hash, X } from 'lucide-react';
+import { User, Mail, Briefcase, X, Phone, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface UserProfileProps {
@@ -9,15 +9,10 @@ interface UserProfileProps {
 
 interface EmployeeProfile {
   full_name: string;
-  employee_code: string;
+  username: string | null;
   email: string | null;
+  phone: string | null;
   role: string;
-  site_id: string | null;
-  date_of_joining: string | null;
-  site?: {
-    name: string;
-    location: string;
-  } | null;
 }
 
 const roleLabels: Record<string, string> = {
@@ -44,15 +39,10 @@ export function UserProfile({ employeeId, onClose }: UserProfileProps) {
       .from('employees')
       .select(`
         full_name,
-        employee_code,
+        username,
         email,
-        role,
-        site_id,
-        date_of_joining,
-        sites (
-          name,
-          location
-        )
+        phone,
+        role
       `)
       .eq('id', employeeId)
       .maybeSingle();
@@ -62,10 +52,7 @@ export function UserProfile({ employeeId, onClose }: UserProfileProps) {
     }
 
     if (data) {
-      setProfile({
-        ...data,
-        site: data.sites as any
-      });
+      setProfile(data);
     }
 
     setLoading(false);
@@ -91,77 +78,64 @@ export function UserProfile({ employeeId, onClose }: UserProfileProps) {
               <p className="text-gray-500">Loading profile...</p>
             </div>
           ) : profile ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg flex-shrink-0">
-                  {profile.full_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-xl font-bold text-gray-900 truncate">{profile.full_name}</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {roleLabels[profile.role] || profile.role}
-                  </p>
+            <div className="space-y-6">
+              <div className="flex flex-col items-center mb-6">
+                <div className="relative group cursor-pointer">
+                  <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                    {profile.full_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="text-center">
+                      <Camera className="w-6 h-6 text-white mx-auto mb-1" />
+                      <p className="text-xs text-white font-medium">Add Photo</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-3 bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center gap-3 text-gray-700">
-                  <Hash className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">Employee Code</p>
-                    <p className="text-sm font-semibold">{profile.employee_code}</p>
+              <div className="space-y-4">
+                {profile.username && (
+                  <div className="flex items-center gap-3 text-gray-700 pb-4 border-b border-gray-200">
+                    <User className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 font-medium mb-1">Login Username</p>
+                      <p className="text-base font-semibold text-gray-900">{profile.username}</p>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {profile.phone && (
+                  <div className="flex items-center gap-3 text-gray-700 pb-4 border-b border-gray-200">
+                    <Phone className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 font-medium mb-1">Phone Number</p>
+                      <p className="text-base font-semibold text-gray-900">{profile.phone}</p>
+                    </div>
+                  </div>
+                )}
 
                 {profile.email && (
-                  <div className="flex items-center gap-3 text-gray-700 pt-3 border-t border-gray-200">
+                  <div className="flex items-center gap-3 text-gray-700 pb-4 border-b border-gray-200">
                     <Mail className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Email</p>
-                      <p className="text-sm font-semibold break-all">{profile.email}</p>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 font-medium mb-1">Email ID</p>
+                      <p className="text-base font-semibold text-gray-900 break-all">{profile.email}</p>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 text-gray-700 pt-3 border-t border-gray-200">
+                <div className="flex items-center gap-3 text-gray-700">
                   <Briefcase className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">Role</p>
-                    <p className="text-sm font-semibold">{roleLabels[profile.role] || profile.role}</p>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500 font-medium mb-1">Role</p>
+                    <p className="text-base font-semibold text-gray-900">{roleLabels[profile.role] || profile.role}</p>
                   </div>
                 </div>
-
-                {profile.site && (
-                  <div className="flex items-center gap-3 text-gray-700 pt-3 border-t border-gray-200">
-                    <MapPin className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Site</p>
-                      <p className="text-sm font-semibold">{profile.site.name}</p>
-                      <p className="text-xs text-gray-600">{profile.site.location}</p>
-                    </div>
-                  </div>
-                )}
-
-                {profile.date_of_joining && (
-                  <div className="flex items-center gap-3 text-gray-700 pt-3 border-t border-gray-200">
-                    <Calendar className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Date of Joining</p>
-                      <p className="text-sm font-semibold">
-                        {new Date(profile.date_of_joining).toLocaleDateString('en-US', {
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <button
                 onClick={onClose}
-                className="w-full mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                className="w-full mt-6 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow-sm"
               >
                 Close
               </button>
