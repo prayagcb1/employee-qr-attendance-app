@@ -58,9 +58,12 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
   }, [showDropdown]);
 
   const fetchNotifications = async () => {
+    console.log('🔄 fetchNotifications called with:', { employeeId, employeeRole });
     const allNotifications: Notification[] = [];
 
     if (employeeRole === 'admin' || employeeRole === 'manager') {
+      console.log('👤 User is admin/manager, fetching pending requests...');
+
       const { data: pendingRequests, error } = await supabase
         .from('leave_requests')
         .select(`
@@ -80,27 +83,35 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching notifications:', error);
+        console.error('❌ Error fetching notifications:', error);
         console.error('Error details:', JSON.stringify(error, null, 2));
       } else {
-        console.log('Fetched pending requests:', pendingRequests);
+        console.log('✅ Fetched pending requests:', pendingRequests);
+        console.log('📊 Number of pending requests:', pendingRequests?.length || 0);
       }
 
       if (pendingRequests && pendingRequests.length > 0) {
+        console.log('🔨 Processing pending requests...');
         pendingRequests.forEach((req: any) => {
           const requestType = req.request_type === 'leave' ? 'Leave' : 'WFH';
           const employeeName = req.employees?.full_name || 'Unknown';
           const employeeCode = req.employees?.employee_code || 'N/A';
-          allNotifications.push({
+          const notification = {
             id: req.id,
-            type: 'leave_request',
+            type: 'leave_request' as const,
             title: `${requestType} Request Pending`,
             message: `${employeeName} (${employeeCode}) requested ${requestType}`,
             timestamp: req.created_at,
             data: req
-          });
+          };
+          console.log('➕ Adding notification:', notification);
+          allNotifications.push(notification);
         });
+      } else {
+        console.log('⚠️ No pending requests found or data is empty');
       }
+    } else {
+      console.log('👤 User is not admin/manager, role:', employeeRole);
     }
 
     if (employeeRole !== 'admin' && employeeRole !== 'manager') {
@@ -129,10 +140,12 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
       }
     }
 
-    console.log('All notifications:', allNotifications);
-    console.log('Notification count:', allNotifications.length);
+    console.log('📋 Final notifications array:', allNotifications);
+    console.log('📊 Final notification count:', allNotifications.length);
+    console.log('💾 Setting state with:', { notifications: allNotifications, count: allNotifications.length });
     setNotifications(allNotifications);
     setCount(allNotifications.length);
+    console.log('✅ State update triggered');
   };
 
   const getNotificationIcon = (type: string) => {
@@ -163,11 +176,19 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
     return date.toLocaleDateString();
   };
 
+  console.log('🎨 Rendering NotificationDropdown. State:', {
+    showDropdown,
+    notificationsLength: notifications.length,
+    count,
+    employeeId,
+    employeeRole
+  });
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => {
-          console.log('Bell clicked. Current state:', { showDropdown, notifications, count });
+          console.log('🔔 Bell clicked. Current state:', { showDropdown, notifications, count });
           setShowDropdown(!showDropdown);
         }}
         className="relative flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
@@ -194,17 +215,21 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
           </div>
 
           <div className="overflow-y-auto flex-1">
-            {notifications.length === 0 ? (
+            {(() => {
+              console.log('📺 Rendering dropdown content. notifications.length:', notifications.length);
+              console.log('📺 Notifications array:', notifications);
+              return notifications.length === 0;
+            })() ? (
               <div className="p-8 text-center text-gray-500">
                 <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p className="font-medium">No notifications</p>
                 <p className="text-sm mt-1">You're all caught up!</p>
-                <p className="text-xs mt-2 text-gray-400">Debug: {JSON.stringify({ count, notificationsLength: notifications.length })}</p>
+                <p className="text-xs mt-2 text-gray-400">Debug: {JSON.stringify({ count, notificationsLength: notifications.length, role: employeeRole })}</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
                 {notifications.map((notification) => {
-                  console.log('Rendering notification:', notification);
+                  console.log('🔖 Rendering notification item:', notification);
                   return (
                   <div
                     key={notification.id}
