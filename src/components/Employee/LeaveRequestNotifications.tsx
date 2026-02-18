@@ -29,6 +29,7 @@ export function LeaveRequestNotifications({ employeeId }: LeaveRequestNotificati
 
   useEffect(() => {
     fetchRecentRequests();
+    fetchDismissedFromBanner();
 
     const channel = supabase
       .channel('leave_requests_changes')
@@ -42,6 +43,7 @@ export function LeaveRequestNotifications({ employeeId }: LeaveRequestNotificati
         },
         () => {
           fetchRecentRequests();
+          fetchDismissedFromBanner();
         }
       )
       .subscribe();
@@ -50,6 +52,18 @@ export function LeaveRequestNotifications({ employeeId }: LeaveRequestNotificati
       supabase.removeChannel(channel);
     };
   }, [employeeId]);
+
+  const fetchDismissedFromBanner = async () => {
+    const { data } = await supabase
+      .from('dismissed_notifications')
+      .select('reference_id')
+      .eq('employee_id', employeeId)
+      .eq('dismissed_from', 'banner');
+
+    if (data) {
+      setDismissedIds(data.map(d => d.reference_id));
+    }
+  };
 
   const fetchRecentRequests = async () => {
     const sevenDaysAgo = new Date();
@@ -93,8 +107,17 @@ export function LeaveRequestNotifications({ employeeId }: LeaveRequestNotificati
     setNotifications(enrichedRequests);
   };
 
-  const handleDismiss = (id: string) => {
+  const handleDismiss = async (id: string) => {
     setDismissedIds(prev => [...prev, id]);
+
+    await supabase
+      .from('dismissed_notifications')
+      .insert({
+        employee_id: employeeId,
+        notification_type: 'leave_request_status',
+        reference_id: id,
+        dismissed_from: 'banner'
+      });
   };
 
   const formatDate = (date: string) => {
