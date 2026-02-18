@@ -27,6 +27,7 @@ export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewReques
 
   useEffect(() => {
     fetchPendingRequests();
+    fetchDismissedFromBanner();
 
     const channel = supabase
       .channel('leave_requests_admin_changes')
@@ -47,6 +48,18 @@ export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewReques
       supabase.removeChannel(channel);
     };
   }, [currentEmployeeId]);
+
+  const fetchDismissedFromBanner = async () => {
+    const { data } = await supabase
+      .from('dismissed_notifications')
+      .select('reference_id')
+      .eq('employee_id', currentEmployeeId)
+      .eq('dismissed_from', 'banner');
+
+    if (data) {
+      setDismissedIds(data.map(d => d.reference_id));
+    }
+  };
 
   const fetchPendingRequests = async () => {
     const threeDaysAgo = new Date();
@@ -103,7 +116,16 @@ export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewReques
     setPendingRequests(formatted as any);
   };
 
-  const handleDismiss = (id: string) => {
+  const handleDismiss = async (id: string) => {
+    await supabase
+      .from('dismissed_notifications')
+      .insert({
+        employee_id: currentEmployeeId,
+        notification_type: 'leave_request',
+        reference_id: id,
+        dismissed_from: 'banner'
+      });
+
     setDismissedIds(prev => [...prev, id]);
   };
 

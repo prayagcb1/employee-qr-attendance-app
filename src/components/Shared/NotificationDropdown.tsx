@@ -54,6 +54,17 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
   const fetchNotifications = async () => {
     const allNotifications: Notification[] = [];
 
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const { data: dismissed } = await supabase
+      .from('dismissed_notifications')
+      .select('reference_id, dismissed_from')
+      .eq('employee_id', employeeId)
+      .eq('dismissed_from', 'dropdown');
+
+    const dismissedFromDropdownIds = new Set(dismissed?.map(d => d.reference_id) || []);
+
     if (employeeRole === 'admin' || employeeRole === 'manager') {
       const { data: pendingRequests, error } = await supabase
         .from('leave_requests')
@@ -71,6 +82,7 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
           )
         `)
         .eq('status', 'pending')
+        .gte('created_at', threeDaysAgo.toISOString())
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -79,17 +91,19 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
 
       if (pendingRequests && pendingRequests.length > 0) {
         pendingRequests.forEach((req: any) => {
-          const requestType = req.request_type === 'leave' ? 'Leave' : 'WFH';
-          const employeeName = req.employees?.full_name || 'Unknown';
-          const employeeCode = req.employees?.employee_code || 'N/A';
-          allNotifications.push({
-            id: req.id,
-            type: 'leave_request' as const,
-            title: `${requestType} Request Pending`,
-            message: `${employeeName} (${employeeCode}) requested ${requestType}`,
-            timestamp: req.created_at,
-            data: req
-          });
+          if (!dismissedFromDropdownIds.has(req.id)) {
+            const requestType = req.request_type === 'leave' ? 'Leave' : 'WFH';
+            const employeeName = req.employees?.full_name || 'Unknown';
+            const employeeCode = req.employees?.employee_code || 'N/A';
+            allNotifications.push({
+              id: req.id,
+              type: 'leave_request' as const,
+              title: `${requestType} Request Pending`,
+              message: `${employeeName} (${employeeCode}) requested ${requestType}`,
+              timestamp: req.created_at,
+              data: req
+            });
+          }
         });
       }
     }
@@ -152,6 +166,19 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
     return date.toLocaleDateString();
   };
 
+  const dismissNotification = async (notificationId: string, notificationType: string) => {
+    await supabase
+      .from('dismissed_notifications')
+      .insert({
+        employee_id: employeeId,
+        notification_type: notificationType,
+        reference_id: notificationId,
+        dismissed_from: 'dropdown'
+      });
+
+    fetchNotifications();
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -195,19 +222,21 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className="p-4 hover:bg-gray-50 transition cursor-pointer"
-                    onClick={() => {
-                      if (notification.type === 'leave_request' && onViewLeaveRequests) {
-                        onViewLeaveRequests();
-                        setShowDropdown(false);
-                      }
-                    }}
+                    className="p-4 hover:bg-gray-50 transition"
                   >
                     <div className="flex gap-3">
                       <div className="flex-shrink-0 mt-1">
                         {getNotificationIcon(notification.type)}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => {
+                          if (notification.type === 'leave_request' && onViewLeaveRequests) {
+                            onViewLeaveRequests();
+                            setShowDropdown(false);
+                          }
+                        }}
+                      >
                         <p className="text-sm font-semibold text-gray-900 mb-1 break-words">
                           {notification.title}
                         </p>
@@ -218,6 +247,16 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
                           {formatTimestamp(notification.timestamp)}
                         </p>
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          dismissNotification(notification.id, notification.type);
+                        }}
+                        className="flex-shrink-0 self-start p-1 rounded-full hover:bg-gray-200 transition text-gray-400 hover:text-gray-600"
+                        title="Dismiss"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
