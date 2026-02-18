@@ -16,3 +16,12 @@ input, select, textarea {
 input::placeholder, select::placeholder, textarea::placeholder {
   color: #9ca3af;
 }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

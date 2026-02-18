@@ -73,33 +73,35 @@ export function FieldSupervisorDashboard() {
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8 sm:px-6 lg:px-8">
         {employee && <LeaveRequestNotifications employeeId={employee.id} />}
 
-        <div className="mb-6">
-          <div className="flex gap-2 sm:gap-4 border-b border-gray-200 overflow-x-auto">
+        <div className="mb-6 -mx-4 sm:mx-0">
+          <div className="flex gap-1 sm:gap-4 border-b border-gray-200 overflow-x-auto px-4 sm:px-0 scrollbar-hide">
             <button
               onClick={() => setActiveTab('my_attendance')}
-              className={`px-3 sm:px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
+              className={`px-2 sm:px-4 py-3 font-medium transition flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-base flex-shrink-0 ${
                 activeTab === 'my_attendance'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>My Attendance</span>
+              <span className="hidden xs:inline">My Attendance</span>
+              <span className="xs:hidden">My</span>
             </button>
             <button
               onClick={() => setActiveTab('all_attendance')}
-              className={`px-3 sm:px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
+              className={`px-2 sm:px-4 py-3 font-medium transition flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-base flex-shrink-0 ${
                 activeTab === 'all_attendance'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>All Attendance</span>
+              <span className="hidden xs:inline">All Attendance</span>
+              <span className="xs:hidden">All</span>
             </button>
             <button
               onClick={() => setActiveTab('attendance_report')}
-              className={`px-3 sm:px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
+              className={`px-2 sm:px-4 py-3 font-medium transition flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-base flex-shrink-0 ${
                 activeTab === 'attendance_report'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
@@ -110,29 +112,31 @@ export function FieldSupervisorDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('waste_forms')}
-              className={`px-3 sm:px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
+              className={`px-2 sm:px-4 py-3 font-medium transition flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-base flex-shrink-0 ${
                 activeTab === 'waste_forms'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Waste Forms</span>
+              <span className="hidden xs:inline">Waste Forms</span>
+              <span className="xs:hidden">Waste</span>
             </button>
             <button
               onClick={() => setActiveTab('employees')}
-              className={`px-3 sm:px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
+              className={`px-2 sm:px-4 py-3 font-medium transition flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-base flex-shrink-0 ${
                 activeTab === 'employees'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Employees</span>
+              <span className="hidden xs:inline">Employees</span>
+              <span className="xs:hidden">Staff</span>
             </button>
             <button
               onClick={() => setActiveTab('sites')}
-              className={`px-3 sm:px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
+              className={`px-2 sm:px-4 py-3 font-medium transition flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-base flex-shrink-0 ${
                 activeTab === 'sites'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
