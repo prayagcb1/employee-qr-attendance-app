@@ -447,12 +447,27 @@ export function AttendanceReport() {
     const day = dailyAttendance.find(d => d.date === date);
     if (!day) return;
 
+    const note = (day.note || '').trim();
+
+    if (note === '') {
+      const { error } = await supabase
+        .from('daily_attendance_notes')
+        .delete()
+        .eq('employee_id', selectedEmployee.id)
+        .eq('date', date);
+
+      if (error) {
+        console.error('Error deleting note:', error);
+      }
+      return;
+    }
+
     const { error } = await supabase
       .from('daily_attendance_notes')
       .upsert({
         employee_id: selectedEmployee.id,
         date,
-        note: day.note || '',
+        note,
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'employee_id,date'
