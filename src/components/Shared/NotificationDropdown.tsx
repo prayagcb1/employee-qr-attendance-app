@@ -74,7 +74,7 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
           start_date,
           end_date,
           status,
-          created_at,
+          requested_at,
           employee_id,
           employees!inner (
             full_name,
@@ -82,8 +82,8 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
           )
         `)
         .eq('status', 'pending')
-        .gte('created_at', threeDaysAgo.toISOString())
-        .order('created_at', { ascending: false });
+        .gte('requested_at', threeDaysAgo.toISOString())
+        .order('requested_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching notifications:', error);
@@ -100,7 +100,7 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
               type: 'leave_request' as const,
               title: `${requestType} Request Pending`,
               message: `${employeeName} (${employeeCode}) requested ${requestType}`,
-              timestamp: req.created_at,
+              timestamp: req.requested_at,
               data: req
             });
           }
