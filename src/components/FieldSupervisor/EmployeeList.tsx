@@ -13,7 +13,11 @@ interface Employee {
   active: boolean;
 }
 
-export function EmployeeList() {
+interface EmployeeListProps {
+  roleFilter?: 'field' | 'all';
+}
+
+export function EmployeeList({ roleFilter: initialRoleFilter = 'all' }: EmployeeListProps = {}) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,14 +25,21 @@ export function EmployeeList() {
 
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [initialRoleFilter]);
 
   const fetchEmployees = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('employees')
-      .select('id, full_name, employee_code, email, role, username, date_of_joining, active')
-      .order('full_name');
+      .select('id, full_name, employee_code, email, role, username, date_of_joining, active');
+
+    if (initialRoleFilter === 'field') {
+      query = query.in('role', ['field_worker', 'field_supervisor']);
+    }
+
+    query = query.order('full_name');
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setEmployees(data);
@@ -74,7 +85,9 @@ export function EmployeeList() {
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <h2 className="text-xl font-bold text-gray-900">Employees</h2>
+        <h2 className="text-xl font-bold text-gray-900">
+          Employees {initialRoleFilter === 'field' && <span className="text-sm font-normal text-gray-600">(Field Staff Only)</span>}
+        </h2>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <input
             type="text"
@@ -83,19 +96,21 @@ export function EmployeeList() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
           />
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="field_supervisor">Field Supervisor</option>
-            <option value="field_worker">Field Worker</option>
-            <option value="office_employee">Office Employee</option>
-            <option value="intern">Intern</option>
-          </select>
+          {initialRoleFilter === 'all' && (
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="field_supervisor">Field Supervisor</option>
+              <option value="field_worker">Field Worker</option>
+              <option value="office_employee">Office Employee</option>
+              <option value="intern">Intern</option>
+            </select>
+          )}
         </div>
       </div>
 

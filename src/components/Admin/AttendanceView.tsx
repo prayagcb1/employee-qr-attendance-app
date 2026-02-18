@@ -53,7 +53,11 @@ interface MonthlyStats {
   daysWorked: number;
 }
 
-export function AttendanceView() {
+interface AttendanceViewProps {
+  roleFilter?: 'field' | 'all';
+}
+
+export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {}) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
@@ -69,7 +73,7 @@ export function AttendanceView() {
 
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [roleFilter]);
 
   useEffect(() => {
     if (selectedEmployee) {
@@ -109,11 +113,18 @@ export function AttendanceView() {
 
   const fetchEmployees = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('employees')
       .select('id, full_name, employee_code, email, role')
-      .eq('active', true)
-      .order('full_name');
+      .eq('active', true);
+
+    if (roleFilter === 'field') {
+      query = query.in('role', ['field_worker', 'field_supervisor']);
+    }
+
+    query = query.order('full_name');
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setEmployees(data);

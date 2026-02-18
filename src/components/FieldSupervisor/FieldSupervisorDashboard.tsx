@@ -133,9 +133,9 @@ export function FieldSupervisorDashboard() {
         </div>
 
         {activeTab === 'my_attendance' && <EmployeeDashboard hideHeader />}
-        {activeTab === 'all_attendance' && <AttendanceView />}
+        {activeTab === 'all_attendance' && <AttendanceView roleFilter="field" />}
         {activeTab === 'waste_forms' && <WasteFormsView />}
-        {activeTab === 'employees' && <EmployeeList />}
+        {activeTab === 'employees' && <EmployeeList roleFilter="field" />}
         {activeTab === 'sites' && <SiteList />}
       </main>
 
