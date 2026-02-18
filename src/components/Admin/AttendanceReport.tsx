@@ -22,6 +22,7 @@ interface DailyAttendance {
   clock_out: string | null;
   status: 'present' | 'absent' | 'incomplete' | 'not_applicable' | 'leave' | 'wfh' | 'incomplete_wfh';
   hours_worked: number;
+  note?: string;
 }
 
 export function AttendanceReport() {
@@ -261,6 +262,18 @@ export function AttendanceReport() {
       .gte('date', `${year}-${String(month).padStart(2, '0')}-01`)
       .lte('date', `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`);
 
+    const { data: notesData } = await supabase
+      .from('daily_attendance_notes')
+      .select('date, note')
+      .eq('employee_id', employeeId)
+      .gte('date', `${year}-${String(month).padStart(2, '0')}-01`)
+      .lte('date', `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`);
+
+    const notesMap = new Map<string, string>();
+    (notesData || []).forEach(note => {
+      notesMap.set(note.date, note.note);
+    });
+
     const dateSiteMap = new Map<string, Map<string, { clock_ins: string[]; clock_outs: string[] }>>();
     (logs || []).forEach((log) => {
       const date = new Date(log.timestamp).toISOString().split('T')[0];
@@ -403,6 +416,7 @@ export function AttendanceReport() {
         clock_out: lastClockOut,
         status,
         hours_worked,
+        note: notesMap.get(date) || '',
       });
     }
 
@@ -419,6 +433,34 @@ export function AttendanceReport() {
     setShowDetail(false);
     setSelectedEmployee(null);
     setDailyAttendance([]);
+  }
+
+  function handleNoteChange(date: string, note: string) {
+    setDailyAttendance(prev =>
+      prev.map(day => day.date === date ? { ...day, note } : day)
+    );
+  }
+
+  async function saveNote(date: string) {
+    if (!selectedEmployee) return;
+
+    const day = dailyAttendance.find(d => d.date === date);
+    if (!day) return;
+
+    const { error } = await supabase
+      .from('daily_attendance_notes')
+      .upsert({
+        employee_id: selectedEmployee.id,
+        date,
+        note: day.note || '',
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'employee_id,date'
+      });
+
+    if (error) {
+      console.error('Error saving note:', error);
+    }
   }
 
   function formatRole(role: string) {
@@ -695,7 +737,7 @@ export function AttendanceReport() {
                   return (
                     <div
                       key={day.date}
-                      className={`aspect-square border rounded-lg p-1 sm:p-2 flex flex-col items-center justify-center ${getStatusColors()}`}
+                      className={`border rounded-lg p-1 sm:p-2 flex flex-col items-center justify-start ${getStatusColors()} min-h-[80px] sm:min-h-[100px]`}
                     >
                       <div className="text-[10px] sm:text-xs font-medium text-gray-700">{date.getDate()}</div>
                       <div className="text-sm sm:text-lg font-bold">
@@ -704,6 +746,15 @@ export function AttendanceReport() {
                       {(day.status === 'present' || day.status === 'wfh') && day.hours_worked > 0 && (
                         <div className="text-[9px] sm:text-xs text-gray-600 text-center leading-tight">{formatHoursMinutes(day.hours_worked)}</div>
                       )}
+                      <input
+                        type="text"
+                        value={day.note || ''}
+                        onChange={(e) => handleNoteChange(day.date, e.target.value)}
+                        onBlur={() => saveNote(day.date)}
+                        placeholder="Note"
+                        maxLength={50}
+                        className="mt-1 w-full text-[9px] sm:text-[10px] text-center border-none bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 rounded px-1 py-0.5 text-gray-700 placeholder-gray-400"
+                      />
                     </div>
                   );
                 })}
