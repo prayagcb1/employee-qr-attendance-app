@@ -40,6 +40,7 @@ export function AttendanceReport() {
   const [showDetail, setShowDetail] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedMonthsForExport, setSelectedMonthsForExport] = useState<string[]>([]);
+  const [exportRoleFilter, setExportRoleFilter] = useState<'all' | 'field' | 'office'>('all');
   const [exporting, setExporting] = useState(false);
 
   const roles = ['all', 'field_worker', 'field_supervisor', 'intern', 'office_employee', 'admin', 'manager'];
@@ -532,12 +533,13 @@ export function AttendanceReport() {
     if (selectedMonthsForExport.length === 0) return;
 
     setExporting(true);
-    const result = await exportAttendanceToExcel(selectedMonthsForExport);
+    const result = await exportAttendanceToExcel(selectedMonthsForExport, exportRoleFilter);
     setExporting(false);
 
     if (result.success) {
       setShowExportModal(false);
       setSelectedMonthsForExport([]);
+      setExportRoleFilter('all');
     }
   }
 
@@ -823,6 +825,49 @@ export function AttendanceReport() {
             </div>
 
             <div className="p-4 flex-1 overflow-y-auto">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employee Role Filter
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setExportRoleFilter('field')}
+                    className={`px-3 py-2 rounded-lg border-2 transition text-sm font-medium ${
+                      exportRoleFilter === 'field'
+                        ? 'border-blue-500 bg-blue-50 text-blue-900'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Field Staff
+                  </button>
+                  <button
+                    onClick={() => setExportRoleFilter('office')}
+                    className={`px-3 py-2 rounded-lg border-2 transition text-sm font-medium ${
+                      exportRoleFilter === 'office'
+                        ? 'border-blue-500 bg-blue-50 text-blue-900'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Office Staff
+                  </button>
+                  <button
+                    onClick={() => setExportRoleFilter('all')}
+                    className={`px-3 py-2 rounded-lg border-2 transition text-sm font-medium ${
+                      exportRoleFilter === 'all'
+                        ? 'border-blue-500 bg-blue-50 text-blue-900'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    All Users
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {exportRoleFilter === 'field' && 'Field Staff: Field Workers & Supervisors'}
+                  {exportRoleFilter === 'office' && 'Office Staff: Interns, Office Employees, Admins & Managers'}
+                  {exportRoleFilter === 'all' && 'All Users: All employee roles included'}
+                </p>
+              </div>
+
               <p className="text-sm text-gray-600 mb-4">
                 Select the months you want to include in the Excel export. Each month will be added as a separate sheet.
               </p>

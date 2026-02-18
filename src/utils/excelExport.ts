@@ -14,11 +14,20 @@ interface MonthlyData {
   };
 }
 
-async function fetchEmployees(): Promise<EmployeeData[]> {
-  const { data, error } = await supabase
+async function fetchEmployees(roleFilter: 'all' | 'field' | 'office' = 'all'): Promise<EmployeeData[]> {
+  let query = supabase
     .from('employees')
-    .select('id, employee_code, full_name, role')
-    .order('full_name');
+    .select('id, employee_code, full_name, role');
+
+  if (roleFilter === 'field') {
+    query = query.in('role', ['field_worker', 'field_supervisor']);
+  } else if (roleFilter === 'office') {
+    query = query.in('role', ['intern', 'office_employee', 'admin', 'manager']);
+  }
+
+  query = query.order('full_name');
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return data || [];
@@ -296,9 +305,12 @@ function applyCellStyles(worksheet: XLSX.WorkSheet, employees: EmployeeData[], d
   }
 }
 
-export async function exportAttendanceToExcel(monthsToExport: string[]) {
+export async function exportAttendanceToExcel(
+  monthsToExport: string[],
+  roleFilter: 'all' | 'field' | 'office' = 'all'
+) {
   try {
-    const employees = await fetchEmployees();
+    const employees = await fetchEmployees(roleFilter);
 
     const workbook = XLSX.utils.book_new();
     workbook.Workbook = workbook.Workbook || {};
