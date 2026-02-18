@@ -40,6 +40,7 @@ export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewReques
         },
         () => {
           fetchPendingRequests();
+          fetchDismissedFromBanner();
         }
       )
       .subscribe();
@@ -117,6 +118,8 @@ export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewReques
   };
 
   const handleDismiss = async (id: string) => {
+    setDismissedIds(prev => [...prev, id]);
+
     await supabase
       .from('dismissed_notifications')
       .insert({
@@ -125,8 +128,6 @@ export function LeaveRequestAdminNotifications({ currentEmployeeId, onViewReques
         reference_id: id,
         dismissed_from: 'banner'
       });
-
-    setDismissedIds(prev => [...prev, id]);
   };
 
   const formatDate = (date: string) => {
