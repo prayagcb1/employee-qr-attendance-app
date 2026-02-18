@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { LogOut, ClipboardList, Clock, Lock, Users, MapPin, Calendar, FileText } from 'lucide-react';
+import { LogOut, ClipboardList, Clock, Lock, Users, MapPin, Calendar } from 'lucide-react';
 import { UserProfile } from '../Shared/UserProfile';
 import { PasswordChangeForm } from '../Employee/PasswordChangeForm';
 import { WasteFormsView } from '../Admin/WasteFormsView';
@@ -10,12 +10,11 @@ import { EmployeeList } from './EmployeeList';
 import { SiteList } from './SiteList';
 import { LeaveRequestNotifications } from '../Employee/LeaveRequestNotifications';
 import { NotificationDropdown } from '../Shared/NotificationDropdown';
-import { FieldStaffAttendanceReport } from './FieldStaffAttendanceReport';
 
 export function FieldSupervisorDashboard() {
   const { employee, signOut } = useAuth();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'my_attendance' | 'all_attendance' | 'attendance_report' | 'waste_forms' | 'employees' | 'sites'>('my_attendance');
+  const [activeTab, setActiveTab] = useState<'my_attendance' | 'all_attendance' | 'waste_forms' | 'employees' | 'sites'>('my_attendance');
   const [showProfile, setShowProfile] = useState(false);
 
   return (
@@ -100,17 +99,6 @@ export function FieldSupervisorDashboard() {
               <span className="xs:hidden">All</span>
             </button>
             <button
-              onClick={() => setActiveTab('attendance_report')}
-              className={`px-2 sm:px-4 py-3 font-medium transition flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-base flex-shrink-0 ${
-                activeTab === 'attendance_report'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Report</span>
-            </button>
-            <button
               onClick={() => setActiveTab('waste_forms')}
               className={`px-2 sm:px-4 py-3 font-medium transition flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-base flex-shrink-0 ${
                 activeTab === 'waste_forms'
@@ -150,7 +138,6 @@ export function FieldSupervisorDashboard() {
 
         {activeTab === 'my_attendance' && <EmployeeDashboard hideHeader />}
         {activeTab === 'all_attendance' && <AttendanceView roleFilter="field" />}
-        {activeTab === 'attendance_report' && <FieldStaffAttendanceReport />}
         {activeTab === 'waste_forms' && <WasteFormsView />}
         {activeTab === 'employees' && <EmployeeList roleFilter="field" />}
         {activeTab === 'sites' && <SiteList />}
