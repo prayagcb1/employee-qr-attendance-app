@@ -12,17 +12,18 @@ import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, Calendar
 import { UserProfile } from '../Shared/UserProfile';
 import { NotificationDropdown } from '../Shared/NotificationDropdown';
 
-type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'leave-approvals';
+type Tab = 'attendance' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'leave-approvals';
+type AttendanceView = 'logs' | 'report';
 
 export function ManagerDashboard() {
   const { employee, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('qr-scanner');
   const [showProfile, setShowProfile] = useState(false);
+  const [attendanceView, setAttendanceView] = useState<AttendanceView>('report');
 
   const tabs = [
     { id: 'qr-scanner' as Tab, label: 'QR Scanner', icon: QrCode },
     { id: 'attendance' as Tab, label: 'Attendance', icon: Clock },
-    { id: 'attendance-report' as Tab, label: 'Attendance Report', icon: FileText },
     { id: 'leave-approvals' as Tab, label: 'Leave & WFH', icon: CalendarCheck },
     { id: 'sites' as Tab, label: 'Sites', icon: MapPin },
     { id: 'employees' as Tab, label: 'Employees', icon: Users },
@@ -99,8 +100,37 @@ export function ManagerDashboard() {
         </div>
 
         <div>
-          {activeTab === 'attendance' && <AttendanceView />}
-          {activeTab === 'attendance-report' && <AttendanceReport />}
+          {activeTab === 'attendance' && (
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setAttendanceView('report')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                      attendanceView === 'report'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Report View
+                  </button>
+                  <button
+                    onClick={() => setAttendanceView('logs')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                      attendanceView === 'logs'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4" />
+                    Detailed Logs
+                  </button>
+                </div>
+              </div>
+              {attendanceView === 'report' ? <AttendanceReport /> : <AttendanceView />}
+            </div>
+          )}
           {activeTab === 'qr-scanner' && <QRAttendanceScanner />}
           {activeTab === 'leave-approvals' && <LeaveApprovalView currentEmployeeId={employee?.id || ''} />}
           {activeTab === 'sites' && <SiteManagement />}
