@@ -27,12 +27,32 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
     if (employeeId && employeeRole) {
       fetchNotifications();
     }
+
+    const channel = supabase
+      .channel('notifications_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leave_requests'
+        },
+        () => {
+          fetchNotifications();
+        }
+      )
+      .subscribe();
+
     const interval = setInterval(() => {
       if (employeeId && employeeRole) {
         fetchNotifications();
       }
     }, 30000);
-    return () => clearInterval(interval);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, [employeeId, employeeRole]);
 
   useEffect(() => {
@@ -68,19 +88,7 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
     if (employeeRole === 'admin' || employeeRole === 'manager') {
       const { data: pendingRequests, error } = await supabase
         .from('leave_requests')
-        .select(`
-          id,
-          request_type,
-          start_date,
-          end_date,
-          status,
-          requested_at,
-          employee_id,
-          employees!inner (
-            full_name,
-            employee_code
-          )
-        `)
+        .select('id, request_type, start_date, end_date, status, requested_at, employee_id')
         .eq('status', 'pending')
         .gte('requested_at', threeDaysAgo.toISOString())
         .order('requested_at', { ascending: false });
@@ -90,11 +98,21 @@ export function NotificationDropdown({ employeeId, employeeRole, onViewLeaveRequ
       }
 
       if (pendingRequests && pendingRequests.length > 0) {
+        const employeeIds = [...new Set(pendingRequests.map(r => r.employee_id))];
+
+        const { data: employees } = await supabase
+          .from('employees')
+          .select('id, full_name, employee_code')
+          .in('id', employeeIds);
+
+        const employeeMap = new Map(employees?.map(e => [e.id, e]) || []);
+
         pendingRequests.forEach((req: any) => {
           if (!dismissedFromDropdownIds.has(req.id)) {
+            const employee = employeeMap.get(req.employee_id);
             const requestType = req.request_type === 'leave' ? 'Leave' : 'WFH';
-            const employeeName = req.employees?.full_name || 'Unknown';
-            const employeeCode = req.employees?.employee_code || 'N/A';
+            const employeeName = employee?.full_name || 'Unknown';
+            const employeeCode = employee?.employee_code || 'N/A';
             allNotifications.push({
               id: req.id,
               type: 'leave_request' as const,
