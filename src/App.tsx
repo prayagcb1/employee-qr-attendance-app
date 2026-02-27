@@ -6,15 +6,18 @@ import { EmployeeDashboard } from './components/Employee/EmployeeDashboard';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { ManagerDashboard } from './components/Manager/ManagerDashboard';
 import { FieldSupervisorDashboard } from './components/FieldSupervisor/FieldSupervisorDashboard';
+import { ConnectionStatusBanner } from './components/Shared/ConnectionStatusBanner';
 import { testConnection } from './lib/supabase';
 import { logDiagnostics } from './utils/diagnostics';
-import { AlertCircle, Wifi } from 'lucide-react';
+import { connectionMonitor } from './utils/connectionMonitor';
+import { AlertCircle, Wifi, WifiOff } from 'lucide-react';
 
 function AppContent() {
   const { user, employee, loading } = useAuth();
   const [showSignUp, setShowSignUp] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'slow' | 'blocked'>('online');
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -34,6 +37,21 @@ function AppContent() {
     };
 
     checkConnection();
+
+    const unsubscribe = connectionMonitor.subscribe((state) => {
+      setConnectionStatus(state.status);
+
+      if (state.status === 'blocked' && !connectionError) {
+        console.warn('Connection appears to be blocked');
+      }
+    });
+
+    connectionMonitor.startMonitoring(60000);
+
+    return () => {
+      unsubscribe();
+      connectionMonitor.stopMonitoring();
+    };
   }, []);
 
   if (isTestingConnection) {
@@ -146,19 +164,15 @@ function AppContent() {
     );
   }
 
-  if (employee.role === 'admin') {
-    return <AdminDashboard />;
-  }
-
-  if (employee.role === 'manager') {
-    return <ManagerDashboard />;
-  }
-
-  if (employee.role === 'field_supervisor') {
-    return <FieldSupervisorDashboard />;
-  }
-
-  return <EmployeeDashboard />;
+  return (
+    <>
+      <ConnectionStatusBanner />
+      {employee.role === 'admin' && <AdminDashboard />}
+      {employee.role === 'manager' && <ManagerDashboard />}
+      {employee.role === 'field_supervisor' && <FieldSupervisorDashboard />}
+      {!['admin', 'manager', 'field_supervisor'].includes(employee.role) && <EmployeeDashboard />}
+    </>
+  );
 }
 
 function App() {
