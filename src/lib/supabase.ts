@@ -18,6 +18,12 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     headers: {
       'X-Client-Info': 'attendance-app',
     },
+    fetch: (url, options = {}) => {
+      return fetch(url, {
+        ...options,
+        signal: AbortSignal.timeout(30000),
+      });
+    },
   },
   db: {
     schema: 'public',
@@ -29,22 +35,132 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-export async function testConnection() {
-  try {
-    const { data, error } = await supabase
-      .from('employees')
-      .select('count')
-      .limit(1)
-      .maybeSingle();
+async function testSupabaseReachability(): Promise<{ reachable: boolean; error?: string }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    if (error) {
-      console.error('Connection test failed:', error);
-      return { success: false, error: error.message };
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+      method: 'GET',
+      headers: {
+        'apikey': supabaseAnonKey,
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok || response.status === 404) {
+      return { reachable: true };
     }
 
-    return { success: true, data };
+    return {
+      reachable: false,
+      error: `Server returned status ${response.status}`
+    };
   } catch (err) {
-    console.error('Connection test exception:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    clearTimeout(timeoutId);
+
+    if (err instanceof Error) {
+      if (err.name === 'AbortError') {
+        return {
+          reachable: false,
+          error: 'Connection timeout - Mobile network may be blocking access'
+        };
+      }
+      return {
+        reachable: false,
+        error: `Network error: ${err.message}`
+      };
+    }
+
+    return {
+      reachable: false,
+      error: 'Unknown connection error'
+    };
   }
+}
+
+export async function testConnection(retries = 2) {
+  console.log('Testing Supabase connection...');
+
+  const reachabilityTest = await testSupabaseReachability();
+
+  if (!reachabilityTest.reachable) {
+    console.error('Supabase not reachable:', reachabilityTest.error);
+    return {
+      success: false,
+      error: reachabilityTest.error || 'Cannot reach Supabase server',
+      diagnostic: {
+        url: supabaseUrl,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        online: navigator.onLine,
+      }
+    };
+  }
+
+  console.log('Supabase is reachable, testing database query...');
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      console.log(`Query attempt ${attempt + 1}/${retries + 1}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const { data, error } = await supabase
+        .from('employees')
+        .select('count')
+        .limit(1)
+        .abortSignal(controller.signal)
+        .maybeSingle();
+
+      clearTimeout(timeoutId);
+
+      if (error) {
+        console.error(`Query attempt ${attempt + 1} failed:`, error);
+
+        if (attempt === retries) {
+          return {
+            success: false,
+            error: `Database query failed: ${error.message}`,
+            diagnostic: {
+              code: error.code,
+              details: error.details,
+              hint: error.hint,
+            }
+          };
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        continue;
+      }
+
+      console.log('Connection test successful!');
+      return { success: true, data };
+
+    } catch (err) {
+      console.error(`Query attempt ${attempt + 1} exception:`, err);
+
+      if (attempt === retries) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        return {
+          success: false,
+          error: `Connection failed after ${retries + 1} attempts: ${errorMessage}`,
+          diagnostic: {
+            lastError: errorMessage,
+            attempts: retries + 1,
+          }
+        };
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
+  }
+
+  return {
+    success: false,
+    error: 'Maximum retry attempts reached'
+  };
 }

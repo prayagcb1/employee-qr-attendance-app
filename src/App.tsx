@@ -48,44 +48,80 @@ function AppContent() {
   }
 
   if (connectionError) {
+    const isMobileNetworkIssue = connectionError.includes('timeout') || connectionError.includes('blocking');
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-center mb-4">
             <AlertCircle className="h-12 w-12 text-red-500" />
           </div>
-          <h2 className="text-xl font-bold text-center mb-2 text-gray-900">Connection Error</h2>
-          <p className="text-gray-600 text-center mb-4">
-            Unable to connect to the server. This may be due to:
-          </p>
-          <ul className="text-sm text-gray-600 mb-6 space-y-2">
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>Mobile network blocking the connection</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>Weak or unstable internet connection</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>Firewall or security settings</span>
-            </li>
-          </ul>
+          <h2 className="text-xl font-bold text-center mb-2 text-gray-900">
+            {isMobileNetworkIssue ? 'Mobile Network Issue' : 'Connection Error'}
+          </h2>
+
+          {isMobileNetworkIssue ? (
+            <div className="mb-4">
+              <p className="text-gray-600 text-center mb-4 font-medium">
+                Your mobile network is blocking access to the server.
+              </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-yellow-800 font-semibold mb-2">Quick Fix:</p>
+                <ul className="text-sm text-yellow-700 space-y-1">
+                  <li>1. Switch to WiFi network</li>
+                  <li>2. OR use a VPN app</li>
+                  <li>3. OR contact your network provider</li>
+                </ul>
+              </div>
+              <p className="text-xs text-gray-500 text-center">
+                Some mobile networks block certain domains for security reasons.
+                This is common with workplace networks.
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-gray-600 text-center mb-4">
+                Unable to connect to the server. This may be due to:
+              </p>
+              <ul className="text-sm text-gray-600 mb-4 space-y-2">
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>Mobile network blocking the connection</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>Weak or unstable internet connection</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>Firewall or security settings</span>
+                </li>
+              </ul>
+            </>
+          )}
+
           <div className="bg-gray-50 rounded p-3 mb-4">
             <p className="text-xs text-gray-500 font-mono break-all">
-              Error: {connectionError}
+              {connectionError}
             </p>
           </div>
+
           <button
             onClick={() => window.location.reload()}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors mb-3"
           >
             Retry Connection
           </button>
-          <p className="text-xs text-gray-500 text-center mt-4">
-            Try switching to WiFi or a different network
-          </p>
+
+          <details className="mt-4">
+            <summary className="text-xs text-gray-500 cursor-pointer text-center hover:text-gray-700">
+              Technical Details
+            </summary>
+            <div className="mt-2 text-xs text-gray-600 space-y-1">
+              <p>Connection: {navigator.onLine ? 'Online' : 'Offline'}</p>
+              <p className="break-all">URL: {import.meta.env.VITE_SUPABASE_URL}</p>
+            </div>
+          </details>
         </div>
       </div>
     );
