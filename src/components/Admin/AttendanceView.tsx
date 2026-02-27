@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Calendar, Clock, MapPin, User, ChevronRight, ArrowLeft, CalendarCheck, RefreshCw, FileText, List } from 'lucide-react';
-import { FieldStaffAttendanceReport } from '../FieldSupervisor/FieldStaffAttendanceReport';
+import { Calendar, Clock, MapPin, User, ChevronRight, ArrowLeft, CalendarCheck, RefreshCw } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -59,7 +58,6 @@ interface AttendanceViewProps {
 }
 
 export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {}) {
-  const [activeTab, setActiveTab] = useState<'attendance' | 'report'>('attendance');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
@@ -630,75 +628,44 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2 sm:gap-4 border-b border-gray-200 overflow-x-auto bg-white rounded-t-lg px-2 sm:px-4">
-        <button
-          onClick={() => setActiveTab('attendance')}
-          className={`px-3 sm:px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
-            activeTab === 'attendance'
-              ? 'border-b-2 border-blue-600 text-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <List className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span>Attendance</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('report')}
-          className={`px-3 sm:px-4 py-3 font-medium transition flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
-            activeTab === 'report'
-              ? 'border-b-2 border-blue-600 text-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span>Report</span>
-        </button>
+    <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900">Employee Attendance</h2>
+        <input
+          type="text"
+          placeholder="Search employees..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64 text-sm"
+        />
       </div>
 
-      {activeTab === 'attendance' ? (
-        <div className="bg-white rounded-b-lg rounded-t-none shadow-sm p-4 sm:p-6">
-          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Employee Attendance</h2>
-            <input
-              type="text"
-              placeholder="Search employees..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64 text-sm"
-            />
-          </div>
-
-          {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading employees...</div>
-          ) : filteredEmployees.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">No employees found</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredEmployees.map((employee) => (
-                <button
-                  key={employee.id}
-                  onClick={() => setSelectedEmployee(employee)}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-md transition group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-gray-900">{employee.full_name}</p>
-                      <p className="text-sm text-gray-500">{employee.employee_code}</p>
-                      <p className="text-xs text-gray-400">{employee.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      {loading ? (
+        <div className="text-center py-12 text-gray-500">Loading employees...</div>
+      ) : filteredEmployees.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">No employees found</div>
       ) : (
-        <FieldStaffAttendanceReport />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredEmployees.map((employee) => (
+            <button
+              key={employee.id}
+              onClick={() => setSelectedEmployee(employee)}
+              className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-md transition group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-gray-900">{employee.full_name}</p>
+                  <p className="text-sm text-gray-500">{employee.employee_code}</p>
+                  <p className="text-xs text-gray-400">{employee.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition" />
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
