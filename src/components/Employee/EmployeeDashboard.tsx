@@ -240,8 +240,8 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
 
     const geolocationOptions = {
       enableHighAccuracy: false,
-      timeout: 5000,
-      maximumAge: 30000
+      timeout: 20000,
+      maximumAge: 60000
     };
 
     navigator.geolocation.getCurrentPosition(
@@ -317,7 +317,13 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
       },
       (error) => {
         console.error('Geolocation error:', error);
-        setMessage({ type: 'error', text: 'Enable location services' });
+        if (error.code === error.PERMISSION_DENIED) {
+          setMessage({ type: 'error', text: 'Location permission denied. Please allow location access in your browser settings.' });
+        } else if (error.code === error.TIMEOUT) {
+          setMessage({ type: 'error', text: 'Location fetch timed out. Please try again in an open area with good GPS signal.' });
+        } else {
+          setMessage({ type: 'error', text: 'Could not get your location. Please ensure GPS is enabled and try again.' });
+        }
       },
       geolocationOptions
     );
