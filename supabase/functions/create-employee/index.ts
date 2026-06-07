@@ -33,9 +33,7 @@ Deno.serve(async (req: Request) => {
 
     const employeeData: CreateEmployeeRequest = await req.json();
 
-    const normalizedUsername = employeeData.username.trim().toLowerCase();
-    const normalizedPassword = employeeData.password.trim();
-    const email = employeeData.email || `${normalizedUsername}@temp.local`;
+    const email = employeeData.email || `${employeeData.username}@temp.local`;
 
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     const existingUser = existingUsers?.users.find(u => u.email === email);
@@ -46,7 +44,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
-      password: normalizedPassword,
+      password: employeeData.password,
       email_confirm: true,
     });
 
@@ -64,7 +62,7 @@ Deno.serve(async (req: Request) => {
         user_id: authData.user.id,
         full_name: employeeData.full_name,
         employee_code: employeeData.employee_code,
-        username: normalizedUsername,
+        username: employeeData.username,
         email: employeeData.email || null,
         phone: employeeData.phone,
         date_of_joining: employeeData.date_of_joining,

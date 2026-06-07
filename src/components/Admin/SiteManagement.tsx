@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, MapPin, QrCode, Edit, Trash2, Package } from 'lucide-react';
+import { Plus, MapPin, QrCode, CreditCard as Edit, Trash2, Package } from 'lucide-react';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { BinManagement } from './BinManagement';
 
@@ -13,6 +13,7 @@ interface Site {
   longitude: number | null;
   active: boolean;
   created_at: string;
+  bins?: [{ count: number }];
 }
 
 export function SiteManagement() {
@@ -38,11 +39,11 @@ export function SiteManagement() {
     setLoading(true);
     const { data, error } = await supabase
       .from('sites')
-      .select('*')
+      .select('*, bins(count)')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      setSites(data);
+      setSites(data as any);
     }
     setLoading(false);
   };
@@ -125,7 +126,13 @@ export function SiteManagement() {
   };
 
   if (showBinManagement) {
-    return <BinManagement site={showBinManagement} onBack={() => setShowBinManagement(null)} />;
+    return (
+      <BinManagement
+        site={showBinManagement}
+        onBack={() => { setShowBinManagement(null); fetchSites(); }}
+        onBinsChanged={fetchSites}
+      />
+    );
   }
 
   return (
@@ -267,7 +274,16 @@ export function SiteManagement() {
                 </span>
               </div>
 
-              <div className="space-y-2 mt-4">
+              <div className="flex items-center gap-2 mt-3 mb-1">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-lg">
+                  <Package className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-700">
+                    {site.bins?.[0]?.count ?? 0} {(site.bins?.[0]?.count ?? 0) === 1 ? 'bin' : 'bins'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-2">
                 <button
                   onClick={() => setShowBinManagement(site)}
                   className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition text-sm font-medium"

@@ -53,11 +53,7 @@ interface MonthlyStats {
   daysWorked: number;
 }
 
-interface AttendanceViewProps {
-  roleFilter?: 'field' | 'all';
-}
-
-export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {}) {
+export function AttendanceView() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
@@ -73,7 +69,7 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
 
   useEffect(() => {
     fetchEmployees();
-  }, [roleFilter]);
+  }, []);
 
   useEffect(() => {
     if (selectedEmployee) {
@@ -113,18 +109,11 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
 
   const fetchEmployees = async () => {
     setLoading(true);
-    let query = supabase
+    const { data, error } = await supabase
       .from('employees')
       .select('id, full_name, employee_code, email, role')
-      .eq('active', true);
-
-    if (roleFilter === 'field') {
-      query = query.in('role', ['field_worker', 'field_supervisor']);
-    }
-
-    query = query.order('full_name');
-
-    const { data, error } = await query;
+      .eq('active', true)
+      .order('full_name');
 
     if (!error && data) {
       setEmployees(data);
@@ -250,7 +239,7 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
           const durationMs = clockOutTime - clockInTime;
           const hours = Math.floor(durationMs / (1000 * 60 * 60));
           const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-          lastEntry.duration = formatHoursMinutes(hours, minutes);
+          lastEntry.duration = `${hours}h ${minutes}m`;
         }
       }
     });
@@ -267,7 +256,7 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
       if (totalMs > 0) {
         const hours = Math.floor(totalMs / (1000 * 60 * 60));
         const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
-        session.totalDuration = formatHoursMinutes(hours, minutes);
+        session.totalDuration = `${hours}h ${minutes}m`;
       }
     });
 
@@ -344,10 +333,6 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
     });
   };
 
-  const formatHoursMinutes = (hours: number, minutes: number): string => {
-    return `${hours}:${String(minutes).padStart(2, '0')} hr`;
-  };
-
   const getTodayDate = () => {
     return new Date().toISOString().split('T')[0];
   };
@@ -376,8 +361,7 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
                 onClick={() => {
                   setSelectedEmployee(null);
                   setDateFilter('');
-                  const now = new Date();
-                  setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+                  setSelectedMonth('');
                   setMonthlyStats(null);
                   setLogs([]);
                 }}
@@ -423,28 +407,24 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
                 type="date"
                 value={dateFilter}
                 onChange={(e) => {
-                  const newDateFilter = e.target.value;
-                  setDateFilter(newDateFilter);
-                  if (newDateFilter) {
-                    setMonthlyStats(null);
-                  }
+                  setDateFilter(e.target.value);
+                  setSelectedMonth('');
+                  setMonthlyStats(null);
                 }}
-                placeholder="Filter by specific date"
                 max={getTodayDate()}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
 
-              {dateFilter && (
+              {(dateFilter || selectedMonth) && (
                 <button
                   onClick={() => {
                     setDateFilter('');
-                    const now = new Date();
-                    setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+                    setSelectedMonth('');
                     setMonthlyStats(null);
                   }}
                   className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium text-sm bg-blue-50 rounded-lg"
                 >
-                  Clear Date
+                  Clear
                 </button>
               )}
             </div>
@@ -479,40 +459,14 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
                   return acc;
                 }, {} as Record<string, typeof sessions>);
 
-                return Object.entries(groupedByDate).map(([date, dateSessions]) => {
-                  let dailyTotalMs = 0;
-                  dateSessions.forEach(session => {
-                    session.entries.forEach(entry => {
-                      if (entry.clockIn && entry.clockOut) {
-                        const clockInTime = new Date(entry.clockIn.time).getTime();
-                        const clockOutTime = new Date(entry.clockOut.time).getTime();
-                        dailyTotalMs += clockOutTime - clockInTime;
-                      }
-                    });
-                  });
-
-                  const dailyTotalHours = Math.floor(dailyTotalMs / (1000 * 60 * 60));
-                  const dailyTotalMinutes = Math.floor((dailyTotalMs % (1000 * 60 * 60)) / (1000 * 60));
-                  const dailyTotalFormatted = dailyTotalMs > 0 ? formatHoursMinutes(dailyTotalHours, dailyTotalMinutes) : null;
-
-                  return (
+                return Object.entries(groupedByDate).map(([date, dateSessions]) => (
                   <div key={date} className="border-2 border-gray-300 rounded-xl p-4 sm:p-5 bg-gradient-to-br from-gray-50 to-white">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 pb-3 border-b-2 border-gray-300">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                        <h3 className="text-lg font-bold text-gray-900">{date}</h3>
-                        <span className="text-xs text-gray-500">
-                          {dateSessions.length} {dateSessions.length === 1 ? 'site' : 'sites'}
-                        </span>
-                      </div>
-                      {dailyTotalFormatted && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">Daily Total:</span>
-                          <span className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-base font-bold shadow-md">
-                            {dailyTotalFormatted}
-                          </span>
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b-2 border-gray-300">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-lg font-bold text-gray-900">{date}</h3>
+                      <span className="ml-auto text-xs text-gray-500">
+                        {dateSessions.length} {dateSessions.length === 1 ? 'site' : 'sites'}
+                      </span>
                     </div>
                     <div className="space-y-4">
                       {dateSessions.map((session, sessionIndex) => (
@@ -617,8 +571,7 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
                       ))}
                     </div>
                   </div>
-                );
-                });
+                ));
               })()}
             </div>
           )}
@@ -628,15 +581,15 @@ export function AttendanceView({ roleFilter = 'all' }: AttendanceViewProps = {})
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-900">Employee Attendance</h2>
+    <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-900">Employee Attendance</h2>
         <input
           type="text"
           placeholder="Search employees..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64 text-sm"
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
         />
       </div>
 

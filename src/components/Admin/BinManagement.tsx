@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Trash2, Plus, ArrowLeft, Download, QrCode, X, Edit } from 'lucide-react';
+import { Trash2, Plus, ArrowLeft, Download, QrCode, X, CreditCard as Edit } from 'lucide-react';
 import QRCodeLib from 'qrcode';
 
 interface Bin {
@@ -24,9 +24,10 @@ interface Site {
 interface BinManagementProps {
   site: Site;
   onBack: () => void;
+  onBinsChanged?: () => void;
 }
 
-export function BinManagement({ site, onBack }: BinManagementProps) {
+export function BinManagement({ site, onBack, onBinsChanged }: BinManagementProps) {
   const [bins, setBins] = useState<Bin[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -121,6 +122,7 @@ export function BinManagement({ site, onBack }: BinManagementProps) {
       setShowAddForm(false);
       setEditingBin(null);
       await fetchBins();
+      onBinsChanged?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save bin');
     } finally {
@@ -147,6 +149,7 @@ export function BinManagement({ site, onBack }: BinManagementProps) {
       if (error) throw error;
       setSuccess('Bin deleted successfully');
       await fetchBins();
+      onBinsChanged?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete bin');
     }

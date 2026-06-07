@@ -3,14 +3,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { QRScanner } from '../Scanner/QRScanner';
 import { WasteManagementForm } from './WasteManagementForm';
+import { WasteReports } from './WasteReports';
 import { PasswordChangeForm } from './PasswordChangeForm';
-import { LeaveRequestForm } from './LeaveRequestForm';
-import { LeaveStatusView } from './LeaveStatusView';
-import { WFHButton } from './WFHButton';
-import { LeaveRequestNotifications } from './LeaveRequestNotifications';
-import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, CalendarCheck, FileText, User } from 'lucide-react';
-import { UserProfile } from '../Shared/UserProfile';
-import { NotificationDropdown } from '../Shared/NotificationDropdown';
+import { LogOut, ScanLine, Clock, MapPin, Calendar, ClipboardList, ChevronLeft, ChevronRight, Lock, BarChart3 } from 'lucide-react';
 
 interface AttendanceLog {
   id: string;
@@ -33,8 +28,8 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
   const { employee, signOut } = useAuth();
   const [showScanner, setShowScanner] = useState(false);
   const [showWasteForm, setShowWasteForm] = useState(false);
+  const [showWasteReports, setShowWasteReports] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [showLeaveRequestForm, setShowLeaveRequestForm] = useState(false);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -42,14 +37,10 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
   const [currentSiteId, setCurrentSiteId] = useState<string | null>(null);
   const [monthlyStats, setMonthlyStats] = useState({ daysWorked: 0, totalClockIns: 0 });
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [todayLeaveWFHStatus, setTodayLeaveWFHStatus] = useState<'none' | 'leave' | 'wfh'>('none');
-  const [showLeaveStatus, setShowLeaveStatus] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     fetchLogs();
     checkCurrentStatus();
-    checkTodayLeaveWFHStatus();
   }, [employee]);
 
   useEffect(() => {
@@ -184,44 +175,6 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
         totalClockIns: data.length,
       });
     }
-  };
-
-  const checkTodayLeaveWFHStatus = async () => {
-    if (!employee) return;
-
-    const today = new Date().toISOString().split('T')[0];
-
-    const { data: leaveData } = await supabase
-      .from('leave_attendance')
-      .select('id')
-      .eq('employee_id', employee.id)
-      .eq('date', today)
-      .maybeSingle();
-
-    if (leaveData) {
-      setTodayLeaveWFHStatus('leave');
-      return;
-    }
-
-    const { data: approvedWFH } = await supabase
-      .from('leave_requests')
-      .select('id, start_date, end_date')
-      .eq('employee_id', employee.id)
-      .eq('request_type', 'wfh')
-      .eq('status', 'approved')
-      .lte('start_date', today);
-
-    if (approvedWFH && approvedWFH.length > 0) {
-      const hasWFHToday = approvedWFH.some(req =>
-        req.end_date ? req.end_date >= today : req.start_date === today
-      );
-      if (hasWFHToday) {
-        setTodayLeaveWFHStatus('wfh');
-        return;
-      }
-    }
-
-    setTodayLeaveWFHStatus('none');
   };
 
   const handleScan = async (qrData: string) => {
@@ -369,69 +322,39 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
            selectedDate.getFullYear() === now.getFullYear();
   };
 
-  if (showLeaveStatus) {
-    return <LeaveStatusView onBack={() => setShowLeaveStatus(false)} />;
-  }
-
   return (
     <div className={hideHeader ? '' : 'min-h-screen bg-gray-50'}>
       {!hideHeader && <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowProfile(true)}
-                className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition"
-                title="View Profile"
-              >
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm flex-shrink-0">
-                  {employee?.full_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="text-left">
-                  <p className="text-lg font-bold text-gray-900 leading-tight">{employee?.full_name}</p>
-                  {employee?.role === 'field_worker' && (
-                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-bold rounded-full shadow-sm">
-                      Field Worker
-                    </span>
-                  )}
-                  {employee?.role === 'field_supervisor' && (
-                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-bold rounded-full shadow-sm">
-                      Field Supervisor
-                    </span>
-                  )}
-                  {employee?.role === 'intern' && (
-                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-bold rounded-full shadow-sm">
-                      Intern
-                    </span>
-                  )}
-                  {employee?.role === 'office_employee' && (
-                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white text-xs font-bold rounded-full shadow-sm">
-                      Office Employee
-                    </span>
-                  )}
-                </div>
-              </button>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{employee?.full_name}</h1>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <p className="text-xs sm:text-sm text-gray-600">{employee?.employee_code}</p>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 whitespace-nowrap">
+                  {employee?.role === 'field_worker' && 'Field Worker'}
+                  {employee?.role === 'field_supervisor' && 'Field Supervisor'}
+                  {employee?.role === 'intern' && 'Intern'}
+                  {employee?.role === 'office_employee' && 'Office Employee'}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-2">
-              {employee && (
-                <NotificationDropdown
-                  employeeId={employee.id}
-                  employeeRole={employee.role}
-                />
-              )}
               <button
                 onClick={() => setShowPasswordForm(true)}
-                className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
                 title="Change Password"
               >
                 <Lock className="w-5 h-5" />
+                <span className="hidden sm:inline font-medium">Change Password</span>
               </button>
               <button
                 onClick={signOut}
-                className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
                 title="Sign Out"
               >
                 <LogOut className="w-5 h-5" />
+                <span className="hidden sm:inline font-medium">Sign Out</span>
               </button>
             </div>
           </div>
@@ -439,8 +362,6 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
       </header>}
 
       <main className={hideHeader ? '' : 'max-w-7xl mx-auto px-4 py-6 sm:py-8 sm:px-6 lg:px-8'}>
-        {employee && <LeaveRequestNotifications employeeId={employee.id} />}
-
         <div className="mb-6 sm:mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
             <div className={`p-4 sm:p-6 rounded-xl shadow-sm col-span-1 md:col-span-2 ${
@@ -490,66 +411,35 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             </div>
           </div>
 
-          {todayLeaveWFHStatus === 'leave' ? (
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-center gap-3 text-white">
-                <Calendar className="w-8 h-8" />
-                <div className="text-center">
-                  <p className="text-xl font-bold">On Leave Today</p>
-                  <p className="text-sm opacity-90">Enjoy your time off</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {todayLeaveWFHStatus === 'wfh' && (
-                <div className="mb-3 sm:mb-4">
-                  <WFHButton employeeId={employee!.id} date={new Date().toISOString().split('T')[0]} />
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                <button
-                  onClick={() => setShowScanner(true)}
-                  className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
-                >
-                  <ScanLine className="w-5 h-5 sm:w-6 sm:h-6" />
-                  <span>Scan Site QR Code</span>
-                </button>
-
-                {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
-                  <button
-                    onClick={() => setShowWasteForm(true)}
-                    className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
-                  >
-                    <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />
-                    <span>Waste Management Form</span>
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <button
-              onClick={() => setShowLeaveRequestForm(true)}
-              className="w-full bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
+              onClick={() => setShowScanner(true)}
+              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
             >
-              <CalendarCheck className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>
-                {employee?.role === 'field_worker' || employee?.role === 'field_supervisor'
-                  ? 'Request Leave'
-                  : 'Request Leave or WFH'}
-              </span>
+              <ScanLine className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span>Scan Site QR Code</span>
             </button>
 
-            <button
-              onClick={() => setShowLeaveStatus(true)}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
-            >
-              <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>View Request Status</span>
-            </button>
+            {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
+              <button
+                onClick={() => setShowWasteForm(true)}
+                className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
+              >
+                <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />
+                <span>Waste Management Form</span>
+              </button>
+            )}
           </div>
+
+          {(employee?.role === 'field_worker' || employee?.role === 'field_supervisor') && (
+            <button
+              onClick={() => setShowWasteReports(true)}
+              className="mt-3 w-full bg-gray-700 hover:bg-gray-800 active:bg-gray-900 text-white font-semibold py-4 px-4 sm:px-6 rounded-lg shadow-sm transition flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
+            >
+              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span>My Waste Reports</span>
+            </button>
+          )}
 
           {message && (
             <div className={`mt-4 p-4 rounded-lg ${
@@ -660,23 +550,27 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
         />
       )}
 
-      {showLeaveRequestForm && (
-        <LeaveRequestForm
-          employeeId={employee!.id}
-          employeeRole={employee!.role}
-          onClose={() => setShowLeaveRequestForm(false)}
-          onSuccess={() => {
-            setMessage({ type: 'success', text: 'Request submitted successfully' });
-            setTimeout(() => setMessage(null), 5000);
-          }}
-        />
-      )}
-
-      {showProfile && employee && (
-        <UserProfile
-          employeeId={employee.id}
-          onClose={() => setShowProfile(false)}
-        />
+      {showWasteReports && employee && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 overflow-y-auto">
+          <div className="min-h-full flex items-start justify-center p-2 sm:p-4">
+            <div className="bg-gray-50 rounded-2xl shadow-2xl w-full max-w-2xl my-2 sm:my-6 overflow-hidden">
+              <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-blue-700" />
+                  </div>
+                  <h2 className="text-base sm:text-lg font-bold text-gray-900">My Waste Reports</h2>
+                </div>
+                <button onClick={() => setShowWasteReports(false)} className="text-gray-400 hover:text-gray-600 transition p-1">
+                  <span className="text-2xl leading-none">&times;</span>
+                </button>
+              </div>
+              <div className="p-3 sm:p-5">
+                <WasteReports employeeId={employee.id} role={employee.role} />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
