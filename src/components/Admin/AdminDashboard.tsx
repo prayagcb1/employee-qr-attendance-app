@@ -5,11 +5,12 @@ import { AttendanceReport } from './AttendanceReport';
 import { SiteManagement } from './SiteManagement';
 import { EmployeeManagement } from './EmployeeManagement';
 import { WasteFormsView } from './WasteFormsView';
+import { WasteImport } from './WasteImport';
 import { QRAttendanceScanner } from './QRAttendanceScanner';
 import { BinQRApplication } from './BinQRApplication';
-import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, Package } from 'lucide-react';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, Package, Upload } from 'lucide-react';
 
-type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'bin-qr';
+type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'bin-qr' | 'waste-import';
 
 export function AdminDashboard() {
   const { employee, signOut } = useAuth();
@@ -22,6 +23,7 @@ export function AdminDashboard() {
     { id: 'sites' as Tab, label: 'Sites', icon: MapPin },
     { id: 'employees' as Tab, label: 'Employees', icon: Users },
     { id: 'waste-forms' as Tab, label: 'Waste Forms', icon: ClipboardList },
+    { id: 'waste-import' as Tab, label: 'Import Data', icon: Upload },
     { id: 'bin-qr' as Tab, label: 'Bin QR', icon: Package },
   ];
 
@@ -77,6 +79,7 @@ export function AdminDashboard() {
           {activeTab === 'sites' && <SiteManagement />}
           {activeTab === 'employees' && <EmployeeManagement />}
           {activeTab === 'waste-forms' && <WasteFormsView />}
+          {activeTab === 'waste-import' && <WasteImport />}
           {activeTab === 'bin-qr' && <BinQRApplication />}
         </div>
       </div>
