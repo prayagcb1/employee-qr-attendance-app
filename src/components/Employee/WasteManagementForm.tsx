@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import {
@@ -139,6 +139,22 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
 
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [selectedSiteName, setSelectedSiteName] = useState('');
+  const [sitesList, setSitesList] = useState<{id: string; name: string}[]>([]);
+
+  useEffect(() => {
+    supabase.from('sites').select('id, name').eq('active', true).order('name')
+      .then(({ data }) => setSitesList((data ?? []) as {id: string; name: string}[]));
+  }, []);
+
+  const handleSiteSelect = (siteId: string, siteName: string) => {
+    setSelectedSiteId(siteId);
+    setSelectedSiteName(siteName);
+    // Reset all scanned bins if site changes
+    setLoadingEntries([makeLoadingEntry(employee?.full_name ?? '')]);
+    setHarvestEntries([makeHarvestEntry()]);
+    setMaintenanceEntries([makeMaintenanceEntry()]);
+    setError('');
+  };
 
   // Section open/close
   const [openSections, setOpenSections] = useState({
@@ -458,6 +474,32 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
           </div>
 
           <form onSubmit={handleSubmit} className="p-3 sm:p-5 space-y-3">
+
+            {/* ── SITE SELECTOR ── */}
+            {sitesList.length > 0 && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
+                <label className="block text-xs font-semibold text-blue-800 mb-2">Select Site</label>
+                <div className="flex flex-wrap gap-2">
+                  {sitesList.map(site => (
+                    <button
+                      key={site.id}
+                      type="button"
+                      onClick={() => handleSiteSelect(site.id, site.name)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                        selectedSiteId === site.id
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'
+                      }`}
+                    >
+                      {site.name}
+                    </button>
+                  ))}
+                </div>
+                {!selectedSiteId && (
+                  <p className="text-xs text-blue-600 mt-2">Select a site or scan a bin QR to detect site automatically.</p>
+                )}
+              </div>
+            )}
 
             {/* ── LOADING SECTION ── */}
             <div className="rounded-xl overflow-hidden border border-green-200">

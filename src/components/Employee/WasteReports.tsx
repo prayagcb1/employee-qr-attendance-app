@@ -40,6 +40,7 @@ interface LoadingRow {
   loading_datetime: string;
   collector_name: string;
   remarks: string;
+  site_id: string | null;
   sites: { name: string } | null;
 }
 
@@ -52,6 +53,7 @@ interface HarvestRow {
   compost_quality: string;
   moisture_level: string;
   remarks: string;
+  site_id: string | null;
   sites: { name: string } | null;
 }
 
@@ -63,6 +65,7 @@ interface MaintenanceRow {
   status: string;
   remarks: string;
   created_at: string;
+  site_id: string | null;
   sites: { name: string } | null;
 }
 
@@ -955,34 +958,58 @@ export function WasteReports({ employeeId, role }: WasteReportsProps) {
 
   const isSupervisor = ['field_supervisor', 'manager', 'admin'].includes(role);
 
+  const [sitesList, setSitesList] = useState<{id: string; name: string}[]>([]);
+  const [siteFilter, setSiteFilter] = useState<string>('all');
+
+  const fetchSites = useCallback(async () => {
+    const { data } = await supabase.from('sites').select('id, name').eq('active', true).order('name');
+    setSitesList((data ?? []) as {id: string; name: string}[]);
+  }, []);
+
+  useEffect(() => { fetchSites(); }, [fetchSites]);
+
   const fetchAll = useCallback(async () => {
     setFetching(true);
+
+    let binsQ = supabase.from('bins')
+      .select('id, bin_code, bin_type, bin_status, capacity_kg, capacity_liters, current_weight_kg, location_details, active, sites(id, name)')
+      .eq('active', true);
+    if (siteFilter !== 'all') binsQ = (binsQ as any).eq('site_id', siteFilter);
+
+    let ldQ = supabase.from('waste_loading_entries')
+      .select('id, bin_id, bin_code, weight_loaded_kg, waste_type, loading_datetime, collector_name, remarks, site_id, sites(name)')
+      .gte('loading_datetime', `${dateFrom}T00:00:00`)
+      .lte('loading_datetime', `${dateTo}T23:59:59`)
+      .order('loading_datetime', { ascending: false });
+    if (siteFilter !== 'all') ldQ = (ldQ as any).eq('site_id', siteFilter);
+
+    let hvQ = supabase.from('waste_harvest_entries')
+      .select('id, bin_id, bin_code, compost_harvested_kg, harvest_date, compost_quality, moisture_level, remarks, site_id, sites(name)')
+      .gte('harvest_date', dateFrom).lte('harvest_date', dateTo)
+      .order('harvest_date', { ascending: false });
+    if (siteFilter !== 'all') hvQ = (hvQ as any).eq('site_id', siteFilter);
+
+    let mtQ = supabase.from('waste_maintenance_entries')
+      .select('id, bin_id, bin_code, maintenance_type, status, remarks, created_at, site_id, sites(name)')
+      .gte('created_at', `${dateFrom}T00:00:00`).lte('created_at', `${dateTo}T23:59:59`)
+      .order('created_at', { ascending: false });
+    if (siteFilter !== 'all') mtQ = (mtQ as any).eq('site_id', siteFilter);
+
+    let isQ = (supabase.from('waste_management_forms') as any)
+      .select('id, site_id, date, issues_identified, community, recorded_by')
+      .gte('date', dateFrom).lte('date', dateTo)
+      .not('issues_identified', 'eq', '[]')
+      .order('date', { ascending: false });
+    if (siteFilter !== 'all') isQ = isQ.eq('site_id', siteFilter);
+
+    let csQ = supabase.from('waste_consumables_entries')
+      .select('id, item_name, used, entry_date, sites(name)')
+      .gte('entry_date', dateFrom).lte('entry_date', dateTo)
+      .order('entry_date', { ascending: false });
+    if (siteFilter !== 'all') csQ = (csQ as any).eq('site_id', siteFilter);
+
     const [binsRes, ldRes, hvRes, mtRes, isRes, csRes] = await Promise.all([
-      supabase.from('bins')
-        .select('id, bin_code, bin_type, bin_status, capacity_kg, capacity_liters, current_weight_kg, location_details, active, sites(id, name)')
-        .eq('active', true),
-      supabase.from('waste_loading_entries')
-        .select('id, bin_id, bin_code, weight_loaded_kg, waste_type, loading_datetime, collector_name, remarks, sites(name)')
-        .gte('loading_datetime', `${dateFrom}T00:00:00`)
-        .lte('loading_datetime', `${dateTo}T23:59:59`)
-        .order('loading_datetime', { ascending: false }),
-      supabase.from('waste_harvest_entries')
-        .select('id, bin_id, bin_code, compost_harvested_kg, harvest_date, compost_quality, moisture_level, remarks, sites(name)')
-        .gte('harvest_date', dateFrom).lte('harvest_date', dateTo)
-        .order('harvest_date', { ascending: false }),
-      supabase.from('waste_maintenance_entries')
-        .select('id, bin_id, bin_code, maintenance_type, status, remarks, created_at, sites(name)')
-        .gte('created_at', `${dateFrom}T00:00:00`).lte('created_at', `${dateTo}T23:59:59`)
-        .order('created_at', { ascending: false }),
-      supabase.from('waste_management_forms')
-        .select('id, site_id, date, issues_identified, community, recorded_by')
-        .gte('date', dateFrom).lte('date', dateTo)
-        .not('issues_identified', 'eq', '{}')
-        .order('date', { ascending: false }),
-      supabase.from('waste_consumables_entries')
-        .select('id, item_name, used, entry_date, sites(name)')
-        .gte('entry_date', dateFrom).lte('entry_date', dateTo)
-        .order('entry_date', { ascending: false }),
+      binsQ, ldQ, hvQ, mtQ, isQ, csQ,
     ]);
 
     const bins = (binsRes.data ?? []) as BinRow[];
@@ -1001,10 +1028,25 @@ export function WasteReports({ employeeId, role }: WasteReportsProps) {
     setAllLoading(ld);
     setAllHarvest(hv);
     setAllMaintenance(mt);
-    setIssuesData((isRes.data ?? []) as IssueRow[]);
+
+    // issues_identified is stored as a JSON string in the DB — parse it back to array
+    const parsedIssues = ((isRes.data ?? []) as any[]).map(f => ({
+      ...f,
+      issues_identified: (() => {
+        try {
+          if (!f.issues_identified) return [];
+          const val = typeof f.issues_identified === 'string'
+            ? JSON.parse(f.issues_identified)
+            : f.issues_identified;
+          return Array.isArray(val) ? val.filter(Boolean) : [];
+        } catch { return []; }
+      })(),
+    })) as IssueRow[];
+    setIssuesData(parsedIssues);
+
     setConsumablesData((csRes.data ?? []) as ConsumableRow[]);
     setFetching(false);
-  }, [dateFrom, dateTo, isSupervisor]);
+  }, [dateFrom, dateTo, isSupervisor, siteFilter]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -1348,6 +1390,37 @@ export function WasteReports({ employeeId, role }: WasteReportsProps) {
 
       {/* ── Control bar ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-3">
+        {/* Row 0: site filter */}
+        {sitesList.length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Site</label>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => { setSiteFilter('all'); setSelectedBinId('all'); }}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition ${
+                  siteFilter === 'all'
+                    ? 'bg-green-600 text-white border-green-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                All Sites
+              </button>
+              {sitesList.map(site => (
+                <button
+                  key={site.id}
+                  onClick={() => { setSiteFilter(site.id); setSelectedBinId('all'); }}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition ${
+                    siteFilter === site.id
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {site.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Row 1: bin selector */}
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1.5">Scope</label>
