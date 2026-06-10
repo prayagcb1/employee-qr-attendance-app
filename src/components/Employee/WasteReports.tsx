@@ -14,6 +14,7 @@ import autoTable from 'jspdf-autotable';
 interface WasteReportsProps {
   employeeId: string;
   role: string;
+  initialSiteId?: string;
 }
 
 // ── DB types ──────────────────────────────────────────────────────────────────
@@ -899,7 +900,7 @@ function BinCard({ stats, loading, harvest, maintenance }: {
 
 type TabType = 'overview' | 'bins' | 'loading' | 'harvest' | 'maintenance' | 'issues' | 'analytics';
 
-export function WasteReports({ employeeId, role }: WasteReportsProps) {
+export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 30);
@@ -959,7 +960,7 @@ export function WasteReports({ employeeId, role }: WasteReportsProps) {
   const isSupervisor = ['field_supervisor', 'manager', 'admin'].includes(role);
 
   const [sitesList, setSitesList] = useState<{id: string; name: string}[]>([]);
-  const [siteFilter, setSiteFilter] = useState<string>('all');
+  const [siteFilter, setSiteFilter] = useState<string>(initialSiteId ?? 'all');
 
   const fetchSites = useCallback(async () => {
     const { data } = await supabase.from('sites').select('id, name').eq('active', true).order('name');

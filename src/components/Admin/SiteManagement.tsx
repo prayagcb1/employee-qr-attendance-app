@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, MapPin, QrCode, CreditCard as Edit, Trash2, Package } from 'lucide-react';
+import { Plus, MapPin, QrCode, CreditCard as Edit, Trash2, Package, BarChart3, X } from 'lucide-react';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { BinManagement } from './BinManagement';
+import { WasteReports } from '../Employee/WasteReports';
 
 interface Site {
   id: string;
@@ -23,6 +24,7 @@ export function SiteManagement() {
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [showQR, setShowQR] = useState<Site | null>(null);
   const [showBinManagement, setShowBinManagement] = useState<Site | null>(null);
+  const [showSiteReport, setShowSiteReport] = useState<Site | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -291,6 +293,13 @@ export function SiteManagement() {
                   <Package className="w-4 h-4" />
                   Manage Bins
                 </button>
+                <button
+                  onClick={() => setShowSiteReport(site)}
+                  className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition text-sm font-medium"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Site Waste Report
+                </button>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowQR(site)}
@@ -333,6 +342,32 @@ export function SiteManagement() {
           site={showQR}
           onClose={() => setShowQR(null)}
         />
+      )}
+
+      {showSiteReport && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-start justify-center overflow-y-auto p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl my-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white rounded-t-xl z-10">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">{showSiteReport.name} — Waste Report</h2>
+                <p className="text-sm text-gray-500">{showSiteReport.address}</p>
+              </div>
+              <button
+                onClick={() => setShowSiteReport(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="p-4">
+              <WasteReports
+                employeeId=""
+                role="admin"
+                initialSiteId={showSiteReport.id}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
