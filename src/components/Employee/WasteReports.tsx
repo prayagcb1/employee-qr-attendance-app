@@ -903,11 +903,12 @@ type TabType = 'overview' | 'bins' | 'loading' | 'harvest' | 'maintenance' | 'is
 export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [dateFrom, setDateFrom] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() - 30);
+    const d = new Date(); d.setDate(d.getDate() - 60);
     return d.toISOString().split('T')[0];
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   // all raw data
@@ -971,6 +972,8 @@ export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsPr
 
   const fetchAll = useCallback(async () => {
     setFetching(true);
+    setFetchError(null);
+    try {
 
     let binsQ = supabase.from('bins')
       .select('id, bin_code, bin_type, bin_status, capacity_kg, capacity_liters, current_weight_kg, location_details, active, sites(id, name)')
@@ -1013,6 +1016,12 @@ export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsPr
       binsQ, ldQ, hvQ, mtQ, isQ, csQ,
     ]);
 
+    // Surface query errors
+    const errs = [binsRes.error, ldRes.error, hvRes.error, mtRes.error, isRes.error, csRes.error].filter(Boolean);
+    if (errs.length > 0) {
+      setFetchError(errs.map(e => e!.message).join(' | '));
+    }
+
     const bins = (binsRes.data ?? []) as BinRow[];
     const ld = (ldRes.data ?? []) as LoadingRow[];
     const hv = (hvRes.data ?? []) as HarvestRow[];
@@ -1046,7 +1055,12 @@ export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsPr
     setIssuesData(parsedIssues);
 
     setConsumablesData((csRes.data ?? []) as ConsumableRow[]);
-    setFetching(false);
+
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : 'Failed to load data. Please try again.');
+    } finally {
+      setFetching(false);
+    }
   }, [dateFrom, dateTo, isSupervisor, siteFilter]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -1388,6 +1402,25 @@ export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsPr
 
   return (
     <div className="space-y-4">
+
+      {/* ── Error banner ── */}
+      {fetchError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 text-sm text-red-800">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500" />
+          <div>
+            <span className="font-semibold">Failed to load data: </span>{fetchError}
+            <button onClick={fetchAll} className="ml-2 underline font-medium hover:text-red-900">Retry</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Initial loading state ── */}
+      {fetching && allBins.length === 0 && allLoading.length === 0 && !fetchError && (
+        <div className="flex items-center justify-center gap-3 py-12 text-gray-500">
+          <Loader className="w-5 h-5 animate-spin text-blue-500" />
+          <span className="text-sm font-medium">Loading waste report data…</span>
+        </div>
+      )}
 
       {/* ── Control bar ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-3">
