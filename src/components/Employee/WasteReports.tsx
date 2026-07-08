@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp, Calendar, TrendingUp, Activity,
   Layers, Filter, RefreshCw, Download, FileSpreadsheet, FileText,
   FlaskConical, Upload, X, CheckCircle, AlertCircle, Eye, Trash2,
-  Sparkles, Share2, Loader,
+  Sparkles, Share2, Loader, ClipboardList,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -85,6 +85,19 @@ interface ConsumableRow {
   used: number;
   entry_date: string;
   sites: { name: string } | null;
+}
+
+interface WasteFormRow {
+  id: string;
+  date: string;
+  community: string;
+  recorded_by: string;
+  waste_segregated: boolean;
+  total_bins_50kg: number;
+  issues_identified: string[];
+  workflow_stage: string;
+  remarks: string;
+  site_id: string | null;
 }
 
 interface BinStats {
@@ -918,6 +931,7 @@ export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsPr
   const [allMaintenance, setAllMaintenance] = useState<MaintenanceRow[]>([]);
   const [issuesData, setIssuesData] = useState<IssueRow[]>([]);
   const [consumablesData, setConsumablesData] = useState<ConsumableRow[]>([]);
+  const [formsData, setFormsData] = useState<WasteFormRow[]>([]);
 
   // Bin scope selector
   const [selectedBinId, setSelectedBinId] = useState<string>('all');
@@ -1012,12 +1026,18 @@ export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsPr
       .order('entry_date', { ascending: false });
     if (siteFilter !== 'all') csQ = (csQ as any).eq('site_id', siteFilter);
 
-    const [binsRes, ldRes, hvRes, mtRes, isRes, csRes] = await Promise.all([
-      binsQ, ldQ, hvQ, mtQ, isQ, csQ,
+    let fmQ = (supabase.from('waste_management_forms') as any)
+      .select('id, date, community, recorded_by, waste_segregated, total_bins_50kg, issues_identified, workflow_stage, remarks, site_id')
+      .gte('date', dateFrom).lte('date', dateTo)
+      .order('date', { ascending: false });
+    if (siteFilter !== 'all') fmQ = fmQ.eq('site_id', siteFilter);
+
+    const [binsRes, ldRes, hvRes, mtRes, isRes, csRes, fmRes] = await Promise.all([
+      binsQ, ldQ, hvQ, mtQ, isQ, csQ, fmQ,
     ]);
 
     // Surface query errors
-    const errs = [binsRes.error, ldRes.error, hvRes.error, mtRes.error, isRes.error, csRes.error].filter(Boolean);
+    const errs = [binsRes.error, ldRes.error, hvRes.error, mtRes.error, isRes.error, csRes.error, fmRes.error].filter(Boolean);
     if (errs.length > 0) {
       setFetchError(errs.map(e => e!.message).join(' | '));
     }
@@ -1055,6 +1075,19 @@ export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsPr
     setIssuesData(parsedIssues);
 
     setConsumablesData((csRes.data ?? []) as ConsumableRow[]);
+
+    // Parse waste_management_forms issues the same way
+    const parsedForms = ((fmRes.data ?? []) as any[]).map(f => ({
+      ...f,
+      issues_identified: (() => {
+        try {
+          if (!f.issues_identified) return [];
+          const val = typeof f.issues_identified === 'string' ? JSON.parse(f.issues_identified) : f.issues_identified;
+          return Array.isArray(val) ? val.filter(Boolean) : [];
+        } catch { return []; }
+      })(),
+    })) as WasteFormRow[];
+    setFormsData(parsedForms);
 
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : 'Failed to load data. Please try again.');
@@ -1415,7 +1448,7 @@ export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsPr
       )}
 
       {/* ── Initial loading state ── */}
-      {fetching && allBins.length === 0 && allLoading.length === 0 && !fetchError && (
+      {fetching && allBins.length === 0 && allLoading.length === 0 && formsData.length === 0 && !fetchError && (
         <div className="flex items-center justify-center gap-3 py-12 text-gray-500">
           <Loader className="w-5 h-5 animate-spin text-blue-500" />
           <span className="text-sm font-medium">Loading waste report data…</span>
@@ -1663,6 +1696,52 @@ export function WasteReports({ employeeId, role, initialSiteId }: WasteReportsPr
               </div>
             </div>
           )}
+
+          {/* ── Submitted Forms log ── */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-gray-500" />
+              Submitted Forms
+              <span className="ml-auto text-xs font-normal text-gray-400">{formsData.length} in period</span>
+            </p>
+            {formsData.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 text-sm">
+                <ClipboardList className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                No waste management forms submitted in this date range.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {formsData.slice(0, 10).map(f => (
+                  <div key={f.id} className="flex items-start gap-3 px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-gray-900 truncate">{f.community}</span>
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded font-medium whitespace-nowrap">{fmtDate(f.date)}</span>
+                        {f.workflow_stage && (
+                          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded font-medium whitespace-nowrap">
+                            {f.workflow_stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </span>
+                        )}
+                        <span className={`px-2 py-0.5 text-xs rounded font-medium whitespace-nowrap ${f.waste_segregated ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {f.waste_segregated ? 'Segregated' : 'Not Segregated'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                        <span>Bins: {f.total_bins_50kg}</span>
+                        {f.issues_identified.length > 0 && (
+                          <span className="text-orange-600">{f.issues_identified.length} issue{f.issues_identified.length !== 1 ? 's' : ''}</span>
+                        )}
+                        {f.remarks && <span className="truncate max-w-xs">{f.remarks}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {formsData.length > 10 && (
+                  <p className="text-xs text-gray-400 text-center pt-1">+{formsData.length - 10} more forms — narrow the date range to see all</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
