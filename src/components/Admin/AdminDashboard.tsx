@@ -8,9 +8,14 @@ import { WasteFormsView } from './WasteFormsView';
 import { WasteImport } from './WasteImport';
 import { QRAttendanceScanner } from './QRAttendanceScanner';
 import { BinQRApplication } from './BinQRApplication';
-import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, Package, Upload } from 'lucide-react';
+import { ComposterManagement } from './ComposterManagement';
+import { CommunityManagement } from './CommunityManagement';
+import { DailyMonitoring } from './DailyMonitoring';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
+import { InventoryManagement } from './InventoryManagement';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, Package, Upload, Box, Users as Users2, BarChart3, ClipboardCheck, Boxes } from 'lucide-react';
 
-type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'bin-qr' | 'waste-import';
+type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'bin-qr' | 'waste-import' | 'composters' | 'communities' | 'daily-monitoring' | 'analytics' | 'inventory';
 
 export function AdminDashboard() {
   const { employee, signOut } = useAuth();
@@ -25,6 +30,11 @@ export function AdminDashboard() {
     { id: 'waste-forms' as Tab, label: 'Waste Forms', icon: ClipboardList },
     { id: 'waste-import' as Tab, label: 'Import Data', icon: Upload },
     { id: 'bin-qr' as Tab, label: 'Bin QR', icon: Package },
+    { id: 'composters' as Tab, label: 'Composters', icon: Box },
+    { id: 'communities' as Tab, label: 'Communities', icon: Users2 },
+    { id: 'daily-monitoring' as Tab, label: 'Daily Monitoring', icon: ClipboardCheck },
+    { id: 'analytics' as Tab, label: 'Analytics', icon: BarChart3 },
+    { id: 'inventory' as Tab, label: 'Inventory', icon: Boxes },
   ];
 
   return (
@@ -81,6 +91,11 @@ export function AdminDashboard() {
           {activeTab === 'waste-forms' && <WasteFormsView />}
           {activeTab === 'waste-import' && <WasteImport />}
           {activeTab === 'bin-qr' && <BinQRApplication />}
+          {activeTab === 'composters' && <ComposterManagement />}
+          {activeTab === 'communities' && <CommunityManagement />}
+          {activeTab === 'daily-monitoring' && <DailyMonitoring />}
+          {activeTab === 'analytics' && <AnalyticsDashboard />}
+          {activeTab === 'inventory' && <InventoryManagement />}
         </div>
       </div>
     </div>
