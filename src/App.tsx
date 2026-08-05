@@ -6,9 +6,10 @@ import { EmployeeDashboard } from './components/Employee/EmployeeDashboard';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { ManagerDashboard } from './components/Manager/ManagerDashboard';
 import { FieldSupervisorDashboard } from './components/FieldSupervisor/FieldSupervisorDashboard';
+import { CommunityUserDashboard } from './components/Community/CommunityUserDashboard';
 
 function AppContent() {
-  const { user, employee, loading } = useAuth();
+  const { user, employee, communityUser, loading } = useAuth();
   const [showSignUp, setShowSignUp] = useState(false);
 
   if (loading) {
@@ -22,7 +23,7 @@ function AppContent() {
     );
   }
 
-  if (!user || !employee) {
+  if (!user || (!employee && !communityUser)) {
     return showSignUp ? (
       <SignUp onToggleForm={() => setShowSignUp(false)} />
     ) : (
@@ -30,15 +31,19 @@ function AppContent() {
     );
   }
 
-  if (employee.role === 'admin') {
+  if (communityUser) {
+    return <CommunityUserDashboard />;
+  }
+
+  if (employee?.role === 'admin') {
     return <AdminDashboard />;
   }
 
-  if (employee.role === 'manager') {
+  if (employee?.role === 'manager') {
     return <ManagerDashboard />;
   }
 
-  if (employee.role === 'field_supervisor') {
+  if (employee?.role === 'field_supervisor') {
     return <FieldSupervisorDashboard />;
   }
 

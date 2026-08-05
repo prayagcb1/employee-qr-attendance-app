@@ -135,6 +135,11 @@ export interface Database {
           bin_status: string
           capacity_liters: number
           current_weight_kg: number
+          community_id: string | null
+          batch_id: string | null
+          bin_number: number | null
+          notes: string
+          last_activity: string | null
           created_at: string
           updated_at: string
         }
@@ -146,6 +151,11 @@ export interface Database {
           bin_status?: string
           capacity_liters?: number
           current_weight_kg?: number
+          community_id?: string | null
+          batch_id?: string | null
+          bin_number?: number | null
+          notes?: string
+          last_activity?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -157,6 +167,11 @@ export interface Database {
           bin_status?: string
           capacity_liters?: number
           current_weight_kg?: number
+          community_id?: string | null
+          batch_id?: string | null
+          bin_number?: number | null
+          notes?: string
+          last_activity?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -559,6 +574,8 @@ export interface Database {
           community_id: string
           batch_number: string
           status: 'loading' | 'harvesting' | 'maintenance' | 'completed'
+          start_date: string | null
+          expected_harvest_date: string | null
           created_at: string
           updated_at: string
         }
@@ -567,6 +584,8 @@ export interface Database {
           community_id: string
           batch_number?: string
           status?: 'loading' | 'harvesting' | 'maintenance' | 'completed'
+          start_date?: string | null
+          expected_harvest_date?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -575,6 +594,122 @@ export interface Database {
           community_id?: string
           batch_number?: string
           status?: 'loading' | 'harvesting' | 'maintenance' | 'completed'
+          start_date?: string | null
+          expected_harvest_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      community_users: {
+        Row: {
+          id: string
+          user_id: string
+          community_id: string
+          role_type: 'estate_manager' | 'mc_member' | 'caas_supervisor' | 'account_manager'
+          name: string
+          phone: string
+          email: string
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          community_id: string
+          role_type: 'estate_manager' | 'mc_member' | 'caas_supervisor' | 'account_manager'
+          name: string
+          phone?: string
+          email?: string
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          community_id?: string
+          role_type?: 'estate_manager' | 'mc_member' | 'caas_supervisor' | 'account_manager'
+          name?: string
+          phone?: string
+          email?: string
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bin_status_history: {
+        Row: {
+          id: string
+          bin_id: string
+          old_status: string | null
+          new_status: string
+          changed_by: string | null
+          changed_by_type: 'employee' | 'community_user'
+          reason: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          bin_id: string
+          old_status?: string | null
+          new_status: string
+          changed_by?: string | null
+          changed_by_type?: 'employee' | 'community_user'
+          reason?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          bin_id?: string
+          old_status?: string | null
+          new_status?: string
+          changed_by?: string | null
+          changed_by_type?: 'employee' | 'community_user'
+          reason?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      bin_maintenance_history: {
+        Row: {
+          id: string
+          bin_id: string
+          issue_type: string
+          issue_description: string
+          resolution_description: string
+          status: 'open' | 'in_progress' | 'resolved'
+          reported_by: string | null
+          reported_by_type: 'employee' | 'community_user'
+          resolved_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          bin_id: string
+          issue_type: string
+          issue_description?: string
+          resolution_description?: string
+          status?: 'open' | 'in_progress' | 'resolved'
+          reported_by?: string | null
+          reported_by_type?: 'employee' | 'community_user'
+          resolved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          bin_id?: string
+          issue_type?: string
+          issue_description?: string
+          resolution_description?: string
+          status?: 'open' | 'in_progress' | 'resolved'
+          reported_by?: string | null
+          reported_by_type?: 'employee' | 'community_user'
+          resolved_at?: string | null
           created_at?: string
           updated_at?: string
         }
