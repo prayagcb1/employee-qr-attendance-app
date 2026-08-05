@@ -4,6 +4,7 @@ import { Plus, Trash2, Pencil, X, Check, Users, Phone, Mail, ChevronDown, Chevro
 import { BIN_STATUS_LABELS, BIN_STATUS_COLORS, MAINTENANCE_ISSUE_TYPES, MAINTENANCE_STATUS_LABELS, MAINTENANCE_STATUS_COLORS, type BinStatus } from '../../lib/binStatus';
 
 interface Composter { id: string; make: string; model: string; capacity_liters: number; }
+interface Site { id: string; name: string; address: string | null; }
 interface KeyPerson { id: string; community_id: string; role_type: 'estate_manager' | 'mc_member' | 'caas_supervisor' | 'account_manager'; name: string; phone: string; email: string; }
 interface Batch { id: string; community_id: string; batch_number: string; status: 'loading' | 'harvesting' | 'maintenance' | 'completed'; start_date: string | null; expected_harvest_date: string | null; }
 interface Bin { id: string; bin_code: string; bin_status: string; capacity_liters: number; current_weight_kg: number; bin_number: number | null; notes: string; last_activity: string | null; }
@@ -13,7 +14,8 @@ interface Community {
   id: string; name: string; address: string;
   wet_waste_bin_size_liters: number; waste_density_kg_per_ltr: number;
   composter_id: string | null; bins_per_batch: number; active: boolean;
-  composters?: Composter | null; key_people?: KeyPerson[];
+  site_id: string | null;
+  composters?: Composter | null; site?: Site | null; key_people?: KeyPerson[];
   batches?: Batch[]; community_users?: CommunityUser[];
 }
 
@@ -30,12 +32,13 @@ const STATUS_COLORS: Record<string, string> = {
 export function CommunityManagement() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [composters, setComposters] = useState<Composter[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', address: '', wet_waste_bin_size_liters: '50', waste_density_kg_per_ltr: '1.0', composter_id: '', bins_per_batch: '4' });
+  const [form, setForm] = useState({ name: '', address: '', wet_waste_bin_size_liters: '50', waste_density_kg_per_ltr: '1.0', composter_id: '', bins_per_batch: '4', site_id: '' });
 
   const [showKeyPersonForm, setShowKeyPersonForm] = useState<string | null>(null);
   const [keyPersonForm, setKeyPersonForm] = useState({ role_type: 'estate_manager' as KeyPerson['role_type'], name: '', phone: '', email: '' });
@@ -59,13 +62,16 @@ export function CommunityManagement() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [composterRes, communityRes] = await Promise.all([
+    const [composterRes, communityRes, siteRes] = await Promise.all([
       supabase.from('composters').select('*').eq('active', true).order('make'),
       supabase.from('communities').select('*').order('name'),
+      supabase.from('sites').select('id, name, address').eq('active', true).order('name'),
     ]);
-    if (composterRes.error || communityRes.error) { setError(composterRes.error?.message || communityRes.error?.message || 'Failed to load'); setLoading(false); return; }
+    if (composterRes.error || communityRes.error || siteRes.error) { setError(composterRes.error?.message || communityRes.error?.message || siteRes.error?.message || 'Failed to load'); setLoading(false); return; }
     const composterList = (composterRes.data ?? []) as Composter[];
+    const siteList = (siteRes.data ?? []) as Site[];
     setComposters(composterList);
+    setSites(siteList);
     const communityList = (communityRes.data ?? []) as Community[];
     const composterMap = new Map(composterList.map(c => [c.id, c]));
     const [keyPeopleRes, batchesRes, usersRes] = await Promise.all([
@@ -76,8 +82,10 @@ export function CommunityManagement() {
     const keyPeople = (keyPeopleRes.data ?? []) as KeyPerson[];
     const batches = (batchesRes.data ?? []) as Batch[];
     const users = (usersRes.data ?? []) as CommunityUser[];
+    const siteMap = new Map(siteList.map(s => [s.id, s]));
     const enriched = communityList.map(c => ({
       ...c, composters: c.composter_id ? (composterMap.get(c.composter_id) ?? null) : null,
+      site: c.site_id ? (siteMap.get(c.site_id) ?? null) : null,
       key_people: keyPeople.filter(kp => kp.community_id === c.id),
       batches: batches.filter(b => b.community_id === c.id),
       community_users: users.filter(u => u.community_id === c.id),
@@ -85,18 +93,18 @@ export function CommunityManagement() {
     setCommunities(enriched); setError(null); setLoading(false);
   };
 
-  const resetForm = () => { setForm({ name: '', address: '', wet_waste_bin_size_liters: '50', waste_density_kg_per_ltr: '1.0', composter_id: '', bins_per_batch: '4' }); setEditingId(null); setShowForm(false); };
+  const resetForm = () => { setForm({ name: '', address: '', wet_waste_bin_size_liters: '50', waste_density_kg_per_ltr: '1.0', composter_id: '', bins_per_batch: '4', site_id: '' }); setEditingId(null); setShowForm(false); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { setError('Community name is required.'); return; }
-    const payload = { name: form.name.trim(), address: form.address.trim(), wet_waste_bin_size_liters: parseFloat(form.wet_waste_bin_size_liters) || 50, waste_density_kg_per_ltr: parseFloat(form.waste_density_kg_per_ltr) || 1.0, composter_id: form.composter_id || null, bins_per_batch: parseInt(form.bins_per_batch) || 4 };
+    const payload = { name: form.name.trim(), address: form.address.trim(), wet_waste_bin_size_liters: parseFloat(form.wet_waste_bin_size_liters) || 50, waste_density_kg_per_ltr: parseFloat(form.waste_density_kg_per_ltr) || 1.0, composter_id: form.composter_id || null, bins_per_batch: parseInt(form.bins_per_batch) || 4, site_id: form.site_id || null };
     if (editingId) { const { error: err } = await supabase.from('communities').update(payload).eq('id', editingId); if (err) { setError(err.message); return; } }
     else { const { error: err } = await supabase.from('communities').insert(payload); if (err) { setError(err.message); return; } }
     resetForm(); fetchAll();
   };
 
-  const handleEdit = (c: Community) => { setForm({ name: c.name, address: c.address, wet_waste_bin_size_liters: String(c.wet_waste_bin_size_liters), waste_density_kg_per_ltr: String(c.waste_density_kg_per_ltr), composter_id: c.composter_id || '', bins_per_batch: String(c.bins_per_batch) }); setEditingId(c.id); setShowForm(true); };
+  const handleEdit = (c: Community) => { setForm({ name: c.name, address: c.address, wet_waste_bin_size_liters: String(c.wet_waste_bin_size_liters), waste_density_kg_per_ltr: String(c.waste_density_kg_per_ltr), composter_id: c.composter_id || '', bins_per_batch: String(c.bins_per_batch), site_id: c.site_id || '' }); setEditingId(c.id); setShowForm(true); };
 
   const handleDelete = async (id: string) => { if (!confirm('Delete this community? All associated data will be deleted.')) return; const { error: err } = await supabase.from('communities').delete().eq('id', id); if (err) { setError(err.message); return; } fetchAll(); };
 
@@ -115,35 +123,21 @@ export function CommunityManagement() {
   const addBatch = async (communityId: string) => {
     const community = communities.find(c => c.id === communityId);
     if (!community) return;
+    if (!community.site_id) { setError('This community must be linked to a Site before batches can be created.'); return; }
     const binsCount = community.bins_per_batch;
     const binSize = community.wet_waste_bin_size_liters;
+    const siteId = community.site_id;
     const batchLabel = batchForm.batch_number.trim() || `Batch ${new Date().toLocaleDateString()}`;
 
-    // Insert batch
+    // Insert batch (trigger auto-generates bins with the community's site_id)
     const { data: batchData, error: batchErr } = await supabase.from('community_batches').insert({
       community_id: communityId, batch_number: batchLabel, status: batchForm.status,
       start_date: batchForm.start_date || null, expected_harvest_date: batchForm.expected_harvest_date || null,
     } as any).select('id').single();
-    if (batchErr || !batchData) { setError(batchErr?.message || 'Failed to create batch'); return; }
-    const batchId = (batchData as any).id;
-
-    // Generate bins
-    const binInserts = [];
-    for (let i = 1; i <= binsCount; i++) {
-      binInserts.push({
-        bin_code: `${batchLabel} - Bin ${i}`,
-        bin_status: 'available',
-        capacity_liters: binSize,
-        current_weight_kg: 0,
-        community_id: communityId,
-        batch_id: batchId,
-        bin_number: i,
-        site_id: null as any,
-        qr_code_data: '',
-      } as any);
+    if (batchErr || !batchData) {
+      setError(batchErr?.message || 'Failed to create batch');
+      return;
     }
-    const { error: binsErr } = await supabase.from('bins').insert(binInserts);
-    if (binsErr) { setError(binsErr.message); return; }
 
     setBatchForm({ batch_number: '', status: 'loading', start_date: '', expected_harvest_date: '' }); setShowBatchForm(null); fetchAll();
   };
@@ -340,6 +334,7 @@ export function CommunityManagement() {
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Composter</label><select value={form.composter_id} onChange={e => setForm({ ...form, composter_id: e.target.value })} className={inputCls}><option value="">Select composter</option>{composters.map(c => <option key={c.id} value={c.id}>{c.make} {c.model} ({c.capacity_liters}L)</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Bins per Batch</label><input type="number" min="1" value={form.bins_per_batch} onChange={e => setForm({ ...form, bins_per_batch: e.target.value })} className={inputCls} /></div>
             </div>
+            <div className="mt-4"><label className="block text-sm font-medium text-gray-700 mb-1">Linked Site <span className="text-red-500">*</span></label><select value={form.site_id} onChange={e => setForm({ ...form, site_id: e.target.value })} className={inputCls}><option value="">Select a site</option>{sites.map(s => <option key={s.id} value={s.id}>{s.name}{s.address ? ` — ${s.address}` : ''}</option>)}</select><p className="text-xs text-gray-500 mt-1">A site must be linked before batches can be created.</p></div>
             <div className="flex gap-3">
               <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"><Check className="w-4 h-4" />{editingId ? 'Update' : 'Add'} Community</button>
               <button type="button" onClick={resetForm} className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"><X className="w-4 h-4" />Cancel</button>
@@ -355,7 +350,7 @@ export function CommunityManagement() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1"><h3 className="text-base font-semibold text-gray-900 truncate">{c.name}</h3><span className={`px-2 py-0.5 text-xs font-medium rounded-full ${c.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{c.active ? 'Active' : 'Inactive'}</span></div>
-                      <div className="flex flex-wrap gap-3 text-sm text-gray-600"><span>Bin: {c.wet_waste_bin_size_liters}L</span><span>Density: {c.waste_density_kg_per_ltr} kg/L</span><span>Batch size: {c.bins_per_batch} bins</span>{c.composters && <span>Composter: {c.composters.make} {c.composters.model}</span>}<span>{c.key_people?.length || 0} key people</span><span>{c.batches?.length || 0} batches</span><span>{c.community_users?.length || 0} portal users</span></div>
+                      <div className="flex flex-wrap gap-3 text-sm text-gray-600"><span>Bin: {c.wet_waste_bin_size_liters}L</span><span>Density: {c.waste_density_kg_per_ltr} kg/L</span><span>Batch size: {c.bins_per_batch} bins</span>{c.composters && <span>Composter: {c.composters.make} {c.composters.model}</span>}<span>{c.key_people?.length || 0} key people</span><span>{c.batches?.length || 0} batches</span><span>{c.community_users?.length || 0} portal users</span>{c.site ? <span className="text-blue-600">Site: {c.site.name}</span> : <span className="text-orange-600 font-medium">No site linked</span>}</div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button onClick={(e) => { e.stopPropagation(); handleEdit(c); }} className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"><Pencil className="w-4 h-4" /></button>
@@ -438,8 +433,8 @@ export function CommunityManagement() {
                             <input type="date" value={batchForm.start_date} onChange={e => setBatchForm({ ...batchForm, start_date: e.target.value })} className={inputCls} />
                             <input type="date" value={batchForm.expected_harvest_date} onChange={e => setBatchForm({ ...batchForm, expected_harvest_date: e.target.value })} className={inputCls} />
                           </div>
-                          <p className="text-xs text-gray-500">This will automatically generate {c.bins_per_batch} bins of {c.wet_waste_bin_size_liters}L each.</p>
-                          <div className="flex gap-2"><button onClick={() => addBatch(c.id)} className="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 transition font-medium">Create Batch & Generate Bins</button><button onClick={() => setShowBatchForm(null)} className="px-3 py-1.5 border border-gray-300 text-gray-700 text-xs rounded-lg hover:bg-gray-50 transition font-medium">Cancel</button></div>
+                          {c.site_id ? <p className="text-xs text-gray-500">This will automatically generate {c.bins_per_batch} bins of {c.wet_waste_bin_size_liters}L each at site: {c.site?.name}.</p> : <p className="text-xs text-red-600 font-medium">This community must be linked to a Site before batches can be created. Edit the community to select a site.</p>}
+                          <div className="flex gap-2"><button onClick={() => addBatch(c.id)} disabled={!c.site_id} className={`px-3 py-1.5 text-white text-xs rounded-lg transition font-medium ${c.site_id ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-300 cursor-not-allowed'}`}>Create Batch & Generate Bins</button><button onClick={() => setShowBatchForm(null)} className="px-3 py-1.5 border border-gray-300 text-gray-700 text-xs rounded-lg hover:bg-gray-50 transition font-medium">Cancel</button></div>
                         </div>
                       )}
                       {c.batches && c.batches.length > 0 ? (

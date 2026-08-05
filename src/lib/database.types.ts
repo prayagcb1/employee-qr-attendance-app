@@ -509,6 +509,7 @@ export interface Database {
           composter_id: string | null
           bins_per_batch: number
           active: boolean
+          site_id: string | null
           created_at: string
           updated_at: string
         }
@@ -521,6 +522,7 @@ export interface Database {
           composter_id?: string | null
           bins_per_batch?: number
           active?: boolean
+          site_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -533,6 +535,7 @@ export interface Database {
           composter_id?: string | null
           bins_per_batch?: number
           active?: boolean
+          site_id?: string | null
           created_at?: string
           updated_at?: string
         }
