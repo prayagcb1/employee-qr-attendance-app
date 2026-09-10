@@ -135,20 +135,16 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
       .eq('employee_id', employee.id)
       .order('timestamp', { ascending: false });
 
-    if (data && data.length > 0) {
-      const siteStatus: { [key: string]: string } = {};
+    const latestBySite = new Map<string, { event_type: string; timestamp: string }>();
+    (data || []).forEach(log => {
+      if (!latestBySite.has(log.site_id)) {
+        latestBySite.set(log.site_id, log);
+      }
+    });
 
-      data.forEach(log => {
-        if (!siteStatus[log.site_id]) {
-          siteStatus[log.site_id] = log.event_type;
-        }
-      });
-
-      const hasOpenClockIn = Object.values(siteStatus).some(status => status === 'clock_in');
-
-      setCurrentStatus(hasOpenClockIn ? 'clocked_in' : 'clocked_out');
-      setCurrentSiteId(hasOpenClockIn ? Object.keys(siteStatus).find(id => siteStatus[id] === 'clock_in') || null : null);
-    }
+    const openSite = Array.from(latestBySite.entries()).find(([, log]) => log.event_type === 'clock_in');
+    setCurrentStatus(openSite ? 'clocked_in' : 'clocked_out');
+    setCurrentSiteId(openSite?.[0] || null);
   };
 
   const fetchMonthlyStats = async () => {
@@ -224,9 +220,15 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             .lt('timestamp', `${today}T23:59:59.999Z`)
             .order('timestamp', { ascending: false });
 
-          const lastLog = todayLogs && todayLogs.length > 0 ? todayLogs[0] : null;
+          const latestBySite = new Map<string, { event_type: 'clock_in' | 'clock_out'; timestamp: string }>();
+          (todayLogs || []).forEach(log => {
+            if (!latestBySite.has(log.site_id)) {
+              latestBySite.set(log.site_id, log);
+            }
+          });
 
-          if (lastLog && lastLog.event_type === 'clock_in' && lastLog.site_id !== site.id) {
+          const openSite = Array.from(latestBySite.entries()).find(([, log]) => log.event_type === 'clock_in');
+          if (openSite && openSite[0] !== site.id) {
             setMessage({
               type: 'error',
               text: 'Please clock out from your current site before clocking in to another site.'
@@ -234,15 +236,7 @@ export function EmployeeDashboard({ hideHeader = false }: EmployeeDashboardProps
             return;
           }
 
-          const eventType = !lastLog || lastLog.event_type === 'clock_out' ? 'clock_in' : 'clock_out';
-
-          if (eventType === 'clock_out' && lastLog && lastLog.site_id !== site.id) {
-            setMessage({
-              type: 'error',
-              text: 'You must clock out at the same site where you clocked in'
-            });
-            return;
-          }
+          const eventType = openSite?.[0] === site.id ? 'clock_out' : 'clock_in';
 
           const { error: logError } = await supabase.from('attendance_logs').insert({
             employee_id: employee.id,

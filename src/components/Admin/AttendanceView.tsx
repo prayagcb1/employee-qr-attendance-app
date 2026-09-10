@@ -21,8 +21,8 @@ interface AttendanceLog {
   notes: string | null;
   sites: {
     name: string;
-    address: string;
-  };
+    address: string | null;
+  } | null;
 }
 
 interface AttendanceSession {
@@ -169,24 +169,7 @@ export function AttendanceView() {
     setLoading(false);
   };
 
-  const getAddressFromCoordinates = async (latitude: number, longitude: number): Promise<string> => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            'User-Agent': 'AttendanceSystem/1.0'
-          }
-        }
-      );
-      const data = await response.json();
-      return data.display_name || 'Address not available';
-    } catch (error) {
-      return 'Address not available';
-    }
-  };
-
-  const groupLogsIntoSessions = async (logs: AttendanceLog[]) => {
+  const groupLogsIntoSessions = (logs: AttendanceLog[]) => {
     const sessionMap = new Map<string, AttendanceSession>();
 
     const sortedLogs = [...logs].sort((a, b) =>
@@ -204,8 +187,8 @@ export function AttendanceView() {
       if (!sessionMap.has(key)) {
         sessionMap.set(key, {
           date,
-          siteName: log.sites.name,
-          siteAddress: log.sites.address,
+          siteName: log.sites?.name || 'Unknown site',
+          siteAddress: log.sites?.address || 'Site address not available',
           entries: [],
           totalDuration: null,
         });
@@ -219,7 +202,7 @@ export function AttendanceView() {
             time: log.timestamp,
             latitude: log.latitude,
             longitude: log.longitude,
-            address: 'Loading...',
+            address: log.sites?.address || 'Site address not available',
           },
           clockOut: null,
           duration: null,
@@ -231,7 +214,7 @@ export function AttendanceView() {
             time: log.timestamp,
             latitude: log.latitude,
             longitude: log.longitude,
-            address: 'Loading...',
+            address: log.sites?.address || 'Site address not available',
           };
 
           const clockInTime = new Date(lastEntry.clockIn.time).getTime();
@@ -267,29 +250,7 @@ export function AttendanceView() {
     });
     setSessions(sessionsArray);
 
-    const addressPromises: Promise<void>[] = [];
-    sessionsArray.forEach((session, sessionIndex) => {
-      session.entries.forEach((entry, entryIndex) => {
-        if (entry.clockIn) {
-          addressPromises.push(
-            getAddressFromCoordinates(entry.clockIn.latitude, entry.clockIn.longitude).then(address => {
-              sessionsArray[sessionIndex].entries[entryIndex].clockIn!.address = address;
-            })
-          );
-        }
-        if (entry.clockOut) {
-          addressPromises.push(
-            getAddressFromCoordinates(entry.clockOut.latitude, entry.clockOut.longitude).then(address => {
-              sessionsArray[sessionIndex].entries[entryIndex].clockOut!.address = address;
-            })
-          );
-        }
-      });
-    });
 
-    Promise.all(addressPromises).then(() => {
-      setSessions([...sessionsArray]);
-    });
   };
 
   const calculateMonthlyStats = async (employeeId: string, monthYear: string) => {
