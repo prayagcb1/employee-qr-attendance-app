@@ -9,6 +9,38 @@ interface ScannedBin {
   siteName: string;
 }
 
+interface LoadingEntry {
+  id: string;
+  form_id: string;
+  bin_code: string;
+  weight_loaded_kg: number;
+  waste_type: string;
+  cocopeat_kg: number | null;
+  loading_datetime: string;
+  collector_name: string;
+  remarks: string;
+}
+
+interface HarvestEntry {
+  id: string;
+  form_id: string;
+  bin_code: string;
+  compost_harvested_kg: number;
+  harvest_date: string;
+  compost_quality: string;
+  moisture_level: string;
+  remarks: string;
+}
+
+interface MaintenanceEntry {
+  id: string;
+  form_id: string;
+  bin_code: string;
+  maintenance_type: string;
+  status: string;
+  remarks: string;
+}
+
 interface WasteForm {
   id: string;
   employee_id: string;
@@ -26,7 +58,10 @@ interface WasteForm {
   employees: {
     full_name: string;
     employee_code: string;
-  };
+  } | null;
+  loadingEntries: LoadingEntry[];
+  harvestEntries: HarvestEntry[];
+  maintenanceEntries: MaintenanceEntry[];
 }
 
 export function WasteFormsView() {
@@ -82,6 +117,26 @@ export function WasteFormsView() {
       setForms([]);
     } else if (data) {
       try {
+        const formIds = data.map(form => form.id);
+        let loadingEntries: LoadingEntry[] = [];
+        let harvestEntries: HarvestEntry[] = [];
+        let maintenanceEntries: MaintenanceEntry[] = [];
+
+        if (formIds.length > 0) {
+          const [loadingResult, harvestResult, maintenanceResult] = await Promise.all([
+            supabase.from('waste_loading_entries').select('*').in('form_id', formIds).order('loading_datetime'),
+            supabase.from('waste_harvest_entries').select('*').in('form_id', formIds).order('harvest_date'),
+            supabase.from('waste_maintenance_entries').select('*').in('form_id', formIds).order('created_at'),
+          ]);
+
+          const childError = loadingResult.error || harvestResult.error || maintenanceResult.error;
+          if (childError) throw childError;
+
+          loadingEntries = (loadingResult.data || []) as LoadingEntry[];
+          harvestEntries = (harvestResult.data || []) as HarvestEntry[];
+          maintenanceEntries = (maintenanceResult.data || []) as MaintenanceEntry[];
+        }
+
         const normalizedData = data.map(form => ({
           ...form,
           issues_identified: typeof form.issues_identified === 'string'
@@ -92,7 +147,10 @@ export function WasteFormsView() {
             : (form.composter_status || {}),
           scanned_bins: typeof form.scanned_bins === 'string'
             ? JSON.parse(form.scanned_bins)
-            : (form.scanned_bins || [])
+            : (form.scanned_bins || []),
+          loadingEntries: loadingEntries.filter(entry => entry.form_id === form.id),
+          harvestEntries: harvestEntries.filter(entry => entry.form_id === form.id),
+          maintenanceEntries: maintenanceEntries.filter(entry => entry.form_id === form.id),
         }));
         setForms(normalizedData);
         setError(null);
@@ -139,6 +197,13 @@ export function WasteFormsView() {
 
   const toggleExpanded = (formId: string) => {
     setExpandedForm(expandedForm === formId ? null : formId);
+  };
+
+  const formatLabel = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+  const displayValue = (value: unknown) => value === null || value === undefined || value === '' ? '—' : String(value);
+  const getCollectorNames = (form: WasteForm) => {
+    const names = Array.from(new Set(form.loadingEntries.map(entry => entry.collector_name).filter(Boolean)));
+    return names.length > 0 ? names.join(', ') : '—';
   };
 
   const handleDelete = async (formId: string, community: string) => {
@@ -301,10 +366,12 @@ export function WasteFormsView() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-600">
                       <span className="flex items-center gap-1 truncate">
                         <User className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{form.employees.full_name} ({form.employees.employee_code})</span>
+                        <span className="truncate">{form.employees ? `${form.employees.full_name} (${form.employees.employee_code})` : '—'}</span>
                       </span>
-                      <span className="truncate">Recorded by: {form.recorded_by}</span>
+                      <span className="truncate">Recorded by: {displayValue(form.recorded_by)}</span>
+                      <span className="truncate">Collector: {getCollectorNames(form)}</span>
                       <span className="whitespace-nowrap">Bins: {form.total_bins_50kg}</span>
+                      <span className="whitespace-nowrap">Submitted: {formatDateTime(form.created_at)}</span>
                     </div>
                   </div>
                   <div className="flex-shrink-0">
@@ -361,6 +428,67 @@ export function WasteFormsView() {
                     </div>
                   )}
 
+                  <div className="space-y-4 mb-4">
+                    <div className="p-4 bg-white rounded-lg border border-gray-200">
+                      <p className="text-sm font-semibold text-gray-900 mb-3">Loading Details</p>
+                      {form.loadingEntries.length > 0 ? (
+                        <div className="space-y-3">
+                          {form.loadingEntries.map(entry => (
+                            <div key={entry.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                                <p><span className="font-medium text-gray-700">Bin:</span> {displayValue(entry.bin_code)}</p>
+                                <p><span className="font-medium text-gray-700">Weight:</span> {displayValue(entry.weight_loaded_kg)} kg</p>
+                                <p><span className="font-medium text-gray-700">Waste type:</span> {formatLabel(entry.waste_type)}</p>
+                                <p><span className="font-medium text-gray-700">Cocopeat:</span> {entry.cocopeat_kg === null ? '—' : `${entry.cocopeat_kg} kg`}</p>
+                                <p><span className="font-medium text-gray-700">Loading time:</span> {formatDateTime(entry.loading_datetime)}</p>
+                                <p><span className="font-medium text-gray-700">Collector:</span> {displayValue(entry.collector_name)}</p>
+                              </div>
+                              <p className="mt-2 text-sm"><span className="font-medium text-gray-700">Remarks:</span> {displayValue(entry.remarks)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-sm text-gray-600">—</p>}
+                    </div>
+
+                    <div className="p-4 bg-white rounded-lg border border-gray-200">
+                      <p className="text-sm font-semibold text-gray-900 mb-3">Harvest Details</p>
+                      {form.harvestEntries.length > 0 ? (
+                        <div className="space-y-3">
+                          {form.harvestEntries.map(entry => (
+                            <div key={entry.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                                <p><span className="font-medium text-gray-700">Bin:</span> {displayValue(entry.bin_code)}</p>
+                                <p><span className="font-medium text-gray-700">Compost harvested:</span> {displayValue(entry.compost_harvested_kg)} kg</p>
+                                <p><span className="font-medium text-gray-700">Harvest date:</span> {displayValue(entry.harvest_date)}</p>
+                                <p><span className="font-medium text-gray-700">Quality:</span> {formatLabel(entry.compost_quality)}</p>
+                                <p><span className="font-medium text-gray-700">Moisture:</span> {formatLabel(entry.moisture_level)}</p>
+                              </div>
+                              <p className="mt-2 text-sm"><span className="font-medium text-gray-700">Remarks:</span> {displayValue(entry.remarks)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-sm text-gray-600">—</p>}
+                    </div>
+
+                    <div className="p-4 bg-white rounded-lg border border-gray-200">
+                      <p className="text-sm font-semibold text-gray-900 mb-3">Maintenance Details</p>
+                      {form.maintenanceEntries.length > 0 ? (
+                        <div className="space-y-3">
+                          {form.maintenanceEntries.map(entry => (
+                            <div key={entry.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                                <p><span className="font-medium text-gray-700">Bin:</span> {displayValue(entry.bin_code)}</p>
+                                <p><span className="font-medium text-gray-700">Type:</span> {formatLabel(entry.maintenance_type)}</p>
+                                <p><span className="font-medium text-gray-700">Status:</span> {formatLabel(entry.status)}</p>
+                              </div>
+                              <p className="mt-2 text-sm"><span className="font-medium text-gray-700">Remarks:</span> {displayValue(entry.remarks)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-sm text-gray-600">—</p>}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div className="p-3 bg-white rounded-lg border border-gray-200">
                       <p className="text-sm font-semibold text-gray-800 mb-2">Issues Identified</p>
@@ -382,7 +510,7 @@ export function WasteFormsView() {
 
                     <div className="p-3 bg-white rounded-lg border border-gray-200">
                       <p className="text-sm font-semibold text-gray-800 mb-2">Remarks</p>
-                      <p className="text-sm text-gray-900">{form.remarks}</p>
+                      <p className="text-sm text-gray-900">{displayValue(form.remarks)}</p>
                     </div>
                   </div>
 

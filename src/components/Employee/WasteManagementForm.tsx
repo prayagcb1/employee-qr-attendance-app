@@ -332,9 +332,6 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     if (validLoading.length > 0) {
       const { error: le } = await supabase.from('waste_loading_entries').insert(
         validLoading.map(e => {
-          const cocopeatNote = e.wasteType === 'wet_waste' && e.cocopeatKg
-            ? `Cocopeat added: ${e.cocopeatKg} kg${e.remarks ? '. ' + e.remarks : ''}`
-            : e.remarks;
           return {
             form_id: formId,
             employee_id: employee.id,
@@ -343,9 +340,10 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
             bin_code: e.binInfo!.binCode,
             weight_loaded_kg: parseFloat(e.weightLoadedKg),
             waste_type: e.wasteType,
+            cocopeat_kg: e.cocopeatKg ? parseFloat(e.cocopeatKg) : null,
             loading_datetime: new Date(e.loadingDatetime).toISOString(),
             collector_name: e.collectorName || employee.full_name,
-            remarks: cocopeatNote,
+            remarks: e.remarks,
           };
         })
       );
@@ -355,7 +353,7 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     // Insert cocopeat consumables for wet waste bins
     const cocopeatEntries = validLoading.filter(e => e.wasteType === 'wet_waste' && e.cocopeatKg);
     if (cocopeatEntries.length > 0) {
-      await supabase.from('waste_consumables_entries').insert(
+      const { error: ce } = await supabase.from('waste_consumables_entries').insert(
         cocopeatEntries.map(e => ({
           form_id: formId,
           employee_id: employee.id,
@@ -366,6 +364,7 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
           entry_date: today,
         }))
       );
+      if (ce) errors.push('Cocopeat entries');
     }
 
     // Insert harvest entries
