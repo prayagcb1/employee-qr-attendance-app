@@ -35,10 +35,17 @@ export function DailyMonitoring() {
   useEffect(() => { if (selectedCommunity) fetchCommunityData(selectedCommunity); }, [selectedCommunity]);
 
   const fetchCommunities = async () => {
-    const { data, error: err } = await supabase.from('communities').select('*').eq('active', true).order('name');
+    const { data, error: err } = await supabase.from('sites').select('id, name').eq('active', true).order('name');
     if (err) { setError(err.message); setLoading(false); return; }
-    setCommunities((data ?? []) as Community[]);
-    if (data && data.length > 0 && !selectedCommunity) setSelectedCommunity((data[0] as { id: string }).id);
+    const siteCommunities = ((data ?? []) as { id: string; name: string }[]).map(site => ({
+      id: site.id,
+      name: site.name,
+      wet_waste_bin_size_liters: 50,
+      waste_density_kg_per_ltr: 1,
+      bins_per_batch: 4,
+    }));
+    setCommunities(siteCommunities);
+    if (siteCommunities.length > 0 && !selectedCommunity) setSelectedCommunity(siteCommunities[0].id);
     setLoading(false);
   };
 
