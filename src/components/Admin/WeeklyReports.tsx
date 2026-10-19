@@ -93,6 +93,7 @@ function formatLabel(value: string) {
 export function WeeklyReports() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [selectedCommunityId, setSelectedCommunityId] = useState('');
+  const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
   const [weekStart, setWeekStart] = useState(getMondayOfWeek(new Date().toISOString().slice(0, 10)));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +117,34 @@ export function WeeklyReports() {
   }, []);
 
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
+
+  useEffect(() => {
+    const fetchAvailableWeeks = async () => {
+      const community = communities.find(c => c.id === selectedCommunityId);
+      if (!community?.site_id) {
+        setAvailableWeeks([]);
+        return;
+      }
+
+      const { data, error: weeksError } = await supabase
+        .from('waste_loading_entries')
+        .select('loading_datetime')
+        .eq('site_id', community.site_id)
+        .order('loading_datetime', { ascending: false });
+
+      if (weeksError) {
+        setError(weeksError.message);
+        setAvailableWeeks([]);
+        return;
+      }
+
+      const weeks = Array.from(new Set((data ?? []).map(entry => getMondayOfWeek(entry.loading_datetime.slice(0, 10)))));
+      setAvailableWeeks(weeks);
+      setWeekStart(currentWeek => weeks.includes(currentWeek) ? currentWeek : (weeks[0] ?? currentWeek));
+    };
+
+    void fetchAvailableWeeks();
+  }, [communities, selectedCommunityId]);
 
   const generateReport = useCallback(async () => {
     setLoading(true);
@@ -368,7 +397,18 @@ export function WeeklyReports() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Week Starting (Monday)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Saved Reporting Week</label>
+            <select
+              value={availableWeeks.includes(weekStart) ? weekStart : ''}
+              onChange={e => setWeekStart(e.target.value)}
+              className={inputCls + ' min-w-[180px]'}
+            >
+              <option value="">Choose a saved week</option>
+              {availableWeeks.map(week => <option key={week} value={week}>{formatDate(week)} — {formatDate(addDays(week, 6))}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Or choose Monday</label>
             <input type="date" value={weekStart} onChange={e => setWeekStart(getMondayOfWeek(e.target.value))} className={inputCls} />
           </div>
           <div>
