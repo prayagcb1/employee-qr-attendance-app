@@ -7,8 +7,8 @@ import { FileText, Download, Share2, Calendar, Package, Leaf, AlertTriangle, Bar
 interface Community {
   id: string;
   name: string;
-  site_id: string | null;
-  sites: { name: string } | null;
+  site_id: string;
+  site_name: string;
 }
 
 interface LoadingEntry {
@@ -92,6 +92,7 @@ function formatLabel(value: string) {
 
 export function WeeklyReports() {
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [communitiesLoading, setCommunitiesLoading] = useState(true);
   const [selectedCommunityId, setSelectedCommunityId] = useState('');
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
   const [weekStart, setWeekStart] = useState(getMondayOfWeek(new Date().toISOString().slice(0, 10)));
@@ -107,11 +108,27 @@ export function WeeklyReports() {
 
   useEffect(() => {
     const fetchCommunities = async () => {
-      const { data } = await supabase
-        .from('communities')
-        .select('id, name, site_id, sites(name)')
+      setCommunitiesLoading(true);
+      const { data, error: fetchError } = await supabase
+        .from('sites')
+        .select('id, name')
+        .eq('active', true)
         .order('name');
-      setCommunities((data ?? []) as Community[]);
+      if (fetchError) {
+ console.error('WeeklyReports: failed to load communities (sites):', fetchError);
+        setError(`Failed to load communities: ${fetchError.message}`);
+        setCommunities([]);
+      } else {
+        const siteList = ((data ?? []) as { id: string; name: string }[]).map(site => ({
+          id: site.id,
+          name: site.name,
+          site_id: site.id,
+          site_name: site.name,
+        }));
+        setCommunities(siteList);
+        setError(null);
+      }
+      setCommunitiesLoading(false);
     };
     fetchCommunities();
   }, []);
@@ -169,11 +186,6 @@ export function WeeklyReports() {
     }
     if (!weekStart) {
       setError('Select a reporting week first.');
-      setLoading(false);
-      return;
-    }
-    if (!community.site_id) {
-      setError('This community is not linked to a site.');
       setLoading(false);
       return;
     }
@@ -277,7 +289,7 @@ export function WeeklyReports() {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Community: ${report.community.name}`, margin, y); y += 5;
-    doc.text(`Site: ${report.community.sites?.name ?? '—'}`, margin, y); y += 5;
+    doc.text(`Site: ${report.community.site_name}`, margin, y); y += 5;
     doc.text(`Week: ${formatDate(weekStart)} — ${formatDate(weekEnd)}`, margin, y); y += 5;
     doc.text(`Generated: ${new Date().toLocaleString()}`, margin, y); y += 8;
 
@@ -414,10 +426,18 @@ export function WeeklyReports() {
         <div className="flex flex-wrap items-end gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Community</label>
-            <select value={selectedCommunityId} onChange={e => setSelectedCommunityId(e.target.value)} className={inputCls + ' min-w-[180px]'}>
-              <option value="">Select a community</option>
+            <select
+              value={selectedCommunityId}
+              onChange={e => setSelectedCommunityId(e.target.value)}
+              disabled={communitiesLoading}
+              className={inputCls + ' min-w-[180px]'}
+            >
+              <option value="">{communitiesLoading ? 'Loading communities...' : 'Select a community'}</option>
               {communities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            {!communitiesLoading && communities.length === 0 && !error && (
+              <p className="mt-1 text-xs text-gray-500">No communities available.</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Saved Reporting Week</label>
@@ -463,7 +483,7 @@ export function WeeklyReports() {
                 <h2 className="text-xl font-bold text-gray-900">Weekly Waste Management Report</h2>
                 <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-600">
                   <span><span className="font-medium">Community:</span> {report.community.name}</span>
-                  <span><span className="font-medium">Site:</span> {report.community.sites?.name ?? '—'}</span>
+                  <span><span className="font-medium">Site:</span> {report.community.site_name}</span>
                   <span><span className="font-medium">Week:</span> {formatDate(weekStart)} — {formatDate(weekEnd)}</span>
                   <span><span className="font-medium">Generated:</span> {new Date().toLocaleString()}</span>
                 </div>
