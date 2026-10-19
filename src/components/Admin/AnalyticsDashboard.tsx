@@ -5,28 +5,23 @@ import { BarChart, Leaf, TrendingUp, Calendar } from 'lucide-react';
 interface Community {
   id: string;
   name: string;
+  site_id: string | null;
 }
 
-interface DailyEntry {
-  date: string;
-  number_of_bins: number;
-  community_id: string;
-  communities: { name: string } | null;
-}
-
-interface CocopeatEntry {
+interface LoadingEntry {
   id: string;
-  date: string;
-  quantity_kg: number;
   bin_code: string;
-  community_id: string;
-  communities: { name: string } | null;
+  waste_type: string;
+  weight_loaded_kg: number;
+  cocopeat_kg: number | null;
+  loading_datetime: string;
+  site_id: string | null;
 }
 
-interface CocopeatByBin {
-  bin_code: string;
-  total_kg: number;
-  entries: number;
+interface DailyTotal {
+  date: string;
+  totalKg: number;
+  binCount: number;
 }
 
 export function AnalyticsDashboard() {
@@ -34,8 +29,7 @@ export function AnalyticsDashboard() {
   const [selectedCommunity, setSelectedCommunity] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
-  const [cocopeatEntries, setCocopeatEntries] = useState<CocopeatEntry[]>([]);
+  const [loadingEntries, setLoadingEntries] = useState<LoadingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,77 +42,83 @@ export function AnalyticsDashboard() {
   }, [selectedCommunity, dateFrom, dateTo]);
 
   const fetchCommunities = async () => {
-    const { data } = await supabase.from('communities').select('id, name').eq('active', true).order('name');
+    const { data } = await supabase.from('communities').select('id, name, site_id').eq('active', true).order('name');
     setCommunities((data ?? []) as Community[]);
   };
 
   const fetchData = async () => {
     setLoading(true);
 
-    let wwQuery = supabase.from('daily_wet_waste_entries')
-      .select('date, number_of_bins, community_id, communities(name)')
-      .order('date', { ascending: false }) as any;
-
-    let ccQuery = supabase.from('cocopeat_usage_entries')
-      .select('id, date, quantity_kg, bin_code, community_id, communities(name)')
-      .order('date', { ascending: false }) as any;
+    let query = supabase
+      .from('waste_loading_entries')
+      .select('id, bin_code, waste_type, weight_loaded_kg, cocopeat_kg, loading_datetime, site_id')
+      .order('loading_datetime', { ascending: false }) as any;
 
     if (selectedCommunity !== 'all') {
-      wwQuery = wwQuery.eq('community_id', selectedCommunity);
-      ccQuery = ccQuery.eq('community_id', selectedCommunity);
+      const community = communities.find(c => c.id === selectedCommunity);
+      if (community?.site_id) {
+        query = query.eq('site_id', community.site_id);
+      } else {
+        setLoadingEntries([]);
+        setLoading(false);
+        return;
+      }
     }
     if (dateFrom) {
-      wwQuery = wwQuery.gte('date', dateFrom);
-      ccQuery = ccQuery.gte('date', dateFrom);
+      query = query.gte('loading_datetime', `${dateFrom}T00:00:00`);
     }
     if (dateTo) {
-      wwQuery = wwQuery.lte('date', dateTo);
-      ccQuery = ccQuery.lte('date', dateTo);
+      query = query.lte('loading_datetime', `${dateTo}T23:59:59`);
     }
 
-    const [wwRes, ccRes] = await Promise.all([wwQuery.limit(100), ccQuery.limit(100)]);
+    const { data, error: fetchError } = await query.limit(500);
 
-    if (wwRes.error || ccRes.error) {
-      setError(wwRes.error?.message || ccRes.error?.message);
-      setDailyEntries([]);
-      setCocopeatEntries([]);
+    if (fetchError) {
+      setError(fetchError.message);
+      setLoadingEntries([]);
       setLoading(false);
       return;
     }
 
-    setDailyEntries((wwRes.data ?? []) as DailyEntry[]);
-    setCocopeatEntries((ccRes.data ?? []) as CocopeatEntry[]);
+    setLoadingEntries((data ?? []) as LoadingEntry[]);
     setError(null);
     setLoading(false);
   };
 
+  // Filter wet waste entries
+  const wetWasteEntries = loadingEntries.filter(e => e.waste_type === 'wet_waste');
+
   // Aggregate wet waste by date
-  const wetWasteByDate = dailyEntries.reduce((acc, entry) => {
-    const dateKey = entry.date;
-    if (!acc[dateKey]) acc[dateKey] = { date: dateKey, totalBins: 0, communityName: entry.communities?.name || '' };
-    acc[dateKey].totalBins += entry.number_of_bins;
+  const wetWasteByDate = wetWasteEntries.reduce((acc, entry) => {
+    const dateKey = entry.loading_datetime.slice(0, 10);
+    if (!acc[dateKey]) acc[dateKey] = { date: dateKey, totalKg: 0, binCount: 0 };
+    acc[dateKey].totalKg += Number(entry.weight_loaded_kg) || 0;
+    acc[dateKey].binCount += 1;
     return acc;
-  }, {} as Record<string, { date: string; totalBins: number; communityName: string }>);
+  }, {} as Record<string, DailyTotal>);
 
   const wetWasteChart = Object.values(wetWasteByDate).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14);
-  const maxBins = Math.max(...wetWasteChart.map(d => d.totalBins), 1);
+  const maxWetWaste = Math.max(...wetWasteChart.map(d => d.totalKg), 1);
 
   // Aggregate cocopeat by bin
-  const cocopeatByBin = cocopeatEntries.reduce((acc, entry) => {
-    const key = entry.bin_code || 'Unassigned';
-    if (!acc[key]) acc[key] = { bin_code: key, total_kg: 0, entries: 0 };
-    acc[key].total_kg += entry.quantity_kg;
-    acc[key].entries += 1;
-    return acc;
-  }, {} as Record<string, CocopeatByBin>);
+  const cocopeatByBin = loadingEntries
+    .filter(e => e.cocopeat_kg !== null && e.cocopeat_kg > 0)
+    .reduce((acc, entry) => {
+      const key = entry.bin_code || 'Unassigned';
+      if (!acc[key]) acc[key] = { bin_code: key, total_kg: 0, entries: 0 };
+      acc[key].total_kg += Number(entry.cocopeat_kg) || 0;
+      acc[key].entries += 1;
+      return acc;
+    }, {} as Record<string, { bin_code: string; total_kg: number; entries: number }>);
 
   const cocopeatBins = Object.values(cocopeatByBin).sort((a, b) => b.total_kg - a.total_kg);
   const maxCocopeat = Math.max(...cocopeatBins.map(b => b.total_kg), 1);
 
   // Totals
-  const totalBins = dailyEntries.reduce((sum, e) => sum + e.number_of_bins, 0);
-  const totalCocopeat = cocopeatEntries.reduce((sum, e) => sum + e.quantity_kg, 0);
-  const avgBinsPerDay = wetWasteChart.length > 0 ? (totalBins / wetWasteChart.length).toFixed(1) : '0';
+  const totalWetWasteKg = wetWasteEntries.reduce((sum, e) => sum + (Number(e.weight_loaded_kg) || 0), 0);
+  const totalCocopeat = loadingEntries.reduce((sum, e) => sum + (Number(e.cocopeat_kg) || 0), 0);
+  const uniqueDates = new Set(wetWasteEntries.map(e => e.loading_datetime.slice(0, 10)));
+  const avgBinsPerDay = uniqueDates.size > 0 ? (wetWasteEntries.length / uniqueDates.size).toFixed(1) : '0';
 
   const inputCls = 'px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm';
 
@@ -154,9 +154,10 @@ export function AnalyticsDashboard() {
             <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-600">Total Wet Waste Bins</span>
+            <span className="text-sm font-medium text-gray-600">Total Wet Waste</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{totalBins}</p>
+          <p className="text-2xl font-bold text-gray-900">{totalWetWasteKg.toFixed(1)} kg</p>
+          <p className="text-xs text-gray-500 mt-1">{wetWasteEntries.length} bin loads</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="flex items-center gap-3 mb-2">
@@ -165,7 +166,7 @@ export function AnalyticsDashboard() {
             </div>
             <span className="text-sm font-medium text-gray-600">Total Cocopeat Used</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{totalCocopeat} kg</p>
+          <p className="text-2xl font-bold text-gray-900">{totalCocopeat.toFixed(1)} kg</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="flex items-center gap-3 mb-2">
@@ -175,6 +176,7 @@ export function AnalyticsDashboard() {
             <span className="text-sm font-medium text-gray-600">Avg Bins / Day</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">{avgBinsPerDay}</p>
+          <p className="text-xs text-gray-500 mt-1">{uniqueDates.size} active days</p>
         </div>
       </div>
 
@@ -184,7 +186,7 @@ export function AnalyticsDashboard() {
           <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
             <BarChart className="w-5 h-5 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900">Wet Waste Bins - Daily Trend</h2>
+          <h2 className="text-xl font-bold text-gray-900">Wet Waste - Daily Trend</h2>
         </div>
 
         {loading ? (
@@ -199,9 +201,9 @@ export function AnalyticsDashboard() {
                 <div className="flex-1 bg-gray-100 rounded-lg h-7 overflow-hidden">
                   <div
                     className="bg-green-500 h-full rounded-lg flex items-center justify-end pr-2 transition-all"
-                    style={{ width: `${(d.totalBins / maxBins) * 100}%`, minWidth: '2rem' }}
+                    style={{ width: `${(d.totalKg / maxWetWaste) * 100}%`, minWidth: '2rem' }}
                   >
-                    <span className="text-xs font-semibold text-white">{d.totalBins}</span>
+                    <span className="text-xs font-semibold text-white">{d.totalKg.toFixed(1)} kg</span>
                   </div>
                 </div>
               </div>
@@ -222,7 +224,7 @@ export function AnalyticsDashboard() {
         {loading ? (
           <div className="text-center py-8 text-gray-500">Loading...</div>
         ) : cocopeatBins.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No cocopeat usage recorded yet</div>
+          <div className="text-center py-8 text-gray-500">No cocopeat usage recorded for the selected filters</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -238,7 +240,7 @@ export function AnalyticsDashboard() {
                 {cocopeatBins.map(bin => (
                   <tr key={bin.bin_code} className="border-b border-gray-100 hover:bg-gray-50 transition">
                     <td className="py-2 px-3 text-sm font-medium text-gray-900">{bin.bin_code}</td>
-                    <td className="py-2 px-3 text-sm text-gray-900 font-semibold">{bin.total_kg} kg</td>
+                    <td className="py-2 px-3 text-sm text-gray-900 font-semibold">{bin.total_kg.toFixed(1)} kg</td>
                     <td className="py-2 px-3 text-sm text-gray-700">{bin.entries}</td>
                     <td className="py-2 px-3">
                       <div className="bg-gray-100 rounded-lg h-5 overflow-hidden w-32">

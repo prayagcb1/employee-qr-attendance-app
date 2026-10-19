@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { ClipboardList, Calendar, User, ChevronDown, ChevronUp, Filter, X, Trash2 } from 'lucide-react';
+import { WeeklyReports } from './WeeklyReports';
 
 interface ScannedBin {
   binCode: string;
@@ -65,6 +66,7 @@ interface WasteForm {
 }
 
 export function WasteFormsView() {
+  const [activeView, setActiveView] = useState<'forms' | 'weekly-reports'>('forms');
   const [forms, setForms] = useState<WasteForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -225,6 +227,29 @@ export function WasteFormsView() {
   };
 
   return (
+    <div className="space-y-4">
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setActiveView('forms')}
+          className={`px-4 py-2.5 font-medium text-sm transition border-b-2 ${
+            activeView === 'forms' ? 'text-blue-600 border-blue-600' : 'text-gray-600 border-transparent hover:text-gray-900'
+          }`}
+        >
+          Waste Forms
+        </button>
+        <button
+          onClick={() => setActiveView('weekly-reports')}
+          className={`px-4 py-2.5 font-medium text-sm transition border-b-2 ${
+            activeView === 'weekly-reports' ? 'text-blue-600 border-blue-600' : 'text-gray-600 border-transparent hover:text-gray-900'
+          }`}
+        >
+          Weekly Reports
+        </button>
+      </div>
+
+      {activeView === 'weekly-reports' ? (
+        <WeeklyReports />
+      ) : (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -535,6 +560,8 @@ export function WasteFormsView() {
             </div>
           ))}
         </div>
+      )}
+    </div>
       )}
     </div>
   );

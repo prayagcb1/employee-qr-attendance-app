@@ -12,10 +12,9 @@ import { ComposterManagement } from './ComposterManagement';
 import { CommunityManagement } from './CommunityManagement';
 import { DailyMonitoring } from './DailyMonitoring';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
-import { InventoryManagement } from './InventoryManagement';
-import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, Package, Upload, Box, Users as Users2, BarChart3, ClipboardCheck, Boxes } from 'lucide-react';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, Package, Upload, Box, Users as Users2, BarChart3, ClipboardCheck } from 'lucide-react';
 
-type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'bin-qr' | 'waste-import' | 'composters' | 'communities' | 'daily-monitoring' | 'analytics' | 'inventory';
+type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'bin-qr' | 'waste-import' | 'composters' | 'communities' | 'daily-monitoring' | 'analytics';
 
 export function AdminDashboard() {
   const { employee, signOut } = useAuth();
@@ -34,7 +33,6 @@ export function AdminDashboard() {
     { id: 'communities' as Tab, label: 'Communities', icon: Users2 },
     { id: 'daily-monitoring' as Tab, label: 'Daily Monitoring', icon: ClipboardCheck },
     { id: 'analytics' as Tab, label: 'Analytics', icon: BarChart3 },
-    { id: 'inventory' as Tab, label: 'Inventory', icon: Boxes },
   ];
 
   return (
@@ -95,7 +93,6 @@ export function AdminDashboard() {
           {activeTab === 'communities' && <CommunityManagement />}
           {activeTab === 'daily-monitoring' && <DailyMonitoring />}
           {activeTab === 'analytics' && <AnalyticsDashboard />}
-          {activeTab === 'inventory' && <InventoryManagement />}
         </div>
       </div>
     </div>

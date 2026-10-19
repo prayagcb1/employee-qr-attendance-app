@@ -15,6 +15,7 @@ interface Community {
   wet_waste_bin_size_liters: number; waste_density_kg_per_ltr: number;
   composter_id: string | null; bins_per_batch: number; active: boolean;
   site_id: string | null;
+  bin_count?: number;
   composters?: Composter | null; site?: Site | null; key_people?: KeyPerson[];
   batches?: Batch[]; community_users?: CommunityUser[];
 }
@@ -74,18 +75,24 @@ export function CommunityManagement() {
     setSites(siteList);
     const communityList = (communityRes.data ?? []) as Community[];
     const composterMap = new Map(composterList.map(c => [c.id, c]));
-    const [keyPeopleRes, batchesRes, usersRes] = await Promise.all([
+    const [keyPeopleRes, batchesRes, usersRes, binsRes] = await Promise.all([
       supabase.from('community_key_people').select('*').order('role_type'),
       supabase.from('community_batches').select('*').order('created_at', { ascending: false }),
       supabase.from('community_users').select('*').order('name'),
+      supabase.from('bins').select('id, site_id'),
     ]);
     const keyPeople = (keyPeopleRes.data ?? []) as KeyPerson[];
     const batches = (batchesRes.data ?? []) as Batch[];
     const users = (usersRes.data ?? []) as CommunityUser[];
+    const binCounts = new Map<string, number>();
+    for (const bin of (binsRes.data ?? []) as { id: string; site_id: string }[]) {
+      binCounts.set(bin.site_id, (binCounts.get(bin.site_id) ?? 0) + 1);
+    }
     const siteMap = new Map(siteList.map(s => [s.id, s]));
     const enriched = communityList.map(c => ({
       ...c, composters: c.composter_id ? (composterMap.get(c.composter_id) ?? null) : null,
       site: c.site_id ? (siteMap.get(c.site_id) ?? null) : null,
+      bin_count: c.site_id ? (binCounts.get(c.site_id) ?? 0) : 0,
       key_people: keyPeople.filter(kp => kp.community_id === c.id),
       batches: batches.filter(b => b.community_id === c.id),
       community_users: users.filter(u => u.community_id === c.id),
@@ -350,7 +357,7 @@ export function CommunityManagement() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1"><h3 className="text-base font-semibold text-gray-900 truncate">{c.name}</h3><span className={`px-2 py-0.5 text-xs font-medium rounded-full ${c.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{c.active ? 'Active' : 'Inactive'}</span></div>
-                      <div className="flex flex-wrap gap-3 text-sm text-gray-600"><span>Bin: {c.wet_waste_bin_size_liters}L</span><span>Density: {c.waste_density_kg_per_ltr} kg/L</span><span>Batch size: {c.bins_per_batch} bins</span>{c.composters && <span>Composter: {c.composters.make} {c.composters.model}</span>}<span>{c.key_people?.length || 0} key people</span><span>{c.batches?.length || 0} batches</span><span>{c.community_users?.length || 0} portal users</span>{c.site ? <span className="text-blue-600">Site: {c.site.name}</span> : <span className="text-orange-600 font-medium">No site linked</span>}</div>
+                      <div className="flex flex-wrap gap-3 text-sm text-gray-600"><span>Bin: {c.wet_waste_bin_size_liters}L</span><span>Density: {c.waste_density_kg_per_ltr} kg/L</span><span>Batch size: {c.bins_per_batch} bins</span>{c.composters && <span>Composter: {c.composters.make} {c.composters.model}</span>}<span>{c.key_people?.length || 0} key people</span><span>{c.batches?.length || 0} batches</span><span>{c.community_users?.length || 0} portal users</span><span>{c.bin_count ?? 0} bins</span>{c.site ? <span className="text-blue-600">Site: {c.site.name}</span> : <span className="text-orange-600 font-medium">No site linked</span>}</div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button onClick={(e) => { e.stopPropagation(); handleEdit(c); }} className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"><Pencil className="w-4 h-4" /></button>
