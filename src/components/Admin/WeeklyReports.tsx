@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -58,18 +58,24 @@ const WASTE_TYPE_LABELS: Record<string, string> = {
   food_waste: 'Food Waste',
 };
 
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getMondayOfWeek(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
+  const date = new Date(`${dateStr}T00:00:00`);
   const day = date.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + diff);
-  return date.toISOString().slice(0, 10);
+  date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day));
+  return toDateInputValue(date);
 }
 
 function addDays(dateStr: string, days: number): string {
-  const date = new Date(dateStr + 'T00:00:00');
+  const date = new Date(`${dateStr}T00:00:00`);
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return toDateInputValue(date);
 }
 
 function formatDate(dateStr: string) {
@@ -103,7 +109,6 @@ export function WeeklyReports() {
       const { data } = await supabase
         .from('communities')
         .select('id, name, site_id, sites(name)')
-        .eq('active', true)
         .order('name');
       setCommunities((data ?? []) as Community[]);
     };
@@ -112,7 +117,7 @@ export function WeeklyReports() {
 
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
 
-  const generateReport = async () => {
+  const generateReport = useCallback(async () => {
     setLoading(true);
     setError(null);
     setReport(null);
@@ -181,7 +186,13 @@ export function WeeklyReports() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [communities, selectedCommunityId, weekEnd, weekStart]);
+
+  useEffect(() => {
+    if (selectedCommunityId && communities.length > 0) {
+      void generateReport();
+    }
+  }, [communities, generateReport, selectedCommunityId]);
 
   // Calculations
   const totalWetWasteKg = report ? report.loadingEntries.filter(e => e.waste_type === 'wet_waste').reduce((s, e) => s + (Number(e.weight_loaded_kg) || 0), 0) : 0;
@@ -209,11 +220,11 @@ export function WeeklyReports() {
     let y = margin;
 
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Weekly Waste Management Report', margin, y); y += 7;
 
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.text(`Community: ${report.community.name}`, margin, y); y += 5;
     doc.text(`Site: ${report.community.sites?.name ?? '—'}`, margin, y); y += 5;
     doc.text(`Week: ${formatDate(weekStart)} — ${formatDate(weekEnd)}`, margin, y); y += 5;
@@ -221,10 +232,10 @@ export function WeeklyReports() {
 
     // Summary
     doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Summary', margin, y); y += 5;
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.text(`Form submissions: ${formCount}`, margin, y); y += 5;
     doc.text(`Unique bins loaded: ${uniqueBins}`, margin, y); y += 5;
     doc.text(`Total wet waste: ${totalWetWasteKg.toFixed(1)} kg`, margin, y); y += 5;
@@ -232,10 +243,10 @@ export function WeeklyReports() {
 
     // Waste by type
     doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Waste Collected by Type', margin, y); y += 5;
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     for (const [type, kg] of Object.entries(wasteByType)) {
       doc.text(`${WASTE_TYPE_LABELS[type] ?? formatLabel(type)}: ${kg.toFixed(1)} kg`, margin, y); y += 5;
     }
@@ -243,10 +254,10 @@ export function WeeklyReports() {
 
     // Daily totals
     doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Daily Collection Totals', margin, y); y += 5;
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     for (const [day, kg] of Object.entries(dailyTotals).sort()) {
       doc.text(`${formatDate(day)}: ${kg.toFixed(1)} kg`, margin, y); y += 5;
     }
@@ -275,10 +286,10 @@ export function WeeklyReports() {
     y = afterTable + 8;
     if (allIssues.length > 0) {
       doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('Issues Identified', margin, y); y += 5;
       doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       for (const issue of allIssues) {
         doc.text(`- ${issue}`, margin + 2, y); y += 5;
       }
@@ -358,7 +369,7 @@ export function WeeklyReports() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Week Starting (Monday)</label>
-            <input type="date" value={weekStart} onChange={e => setWeekStart(e.target.value)} className={inputCls} />
+            <input type="date" value={weekStart} onChange={e => setWeekStart(getMondayOfWeek(e.target.value))} className={inputCls} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Week Ending (Sunday)</label>
