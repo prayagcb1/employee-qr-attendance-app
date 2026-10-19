@@ -10,6 +10,12 @@ interface ScannedBin {
   siteName: string;
 }
 
+interface Community {
+  id: string;
+  name: string;
+  site_id: string | null;
+}
+
 interface LoadingEntry {
   id: string;
   form_id: string;
@@ -45,13 +51,17 @@ interface MaintenanceEntry {
 interface WasteForm {
   id: string;
   employee_id: string;
+  site_id: string;
   community: string;
   date: string;
   recorded_by: string;
   waste_segregated: boolean;
   total_bins_50kg: number;
   issues_identified: string[];
-  composter_status: Record<string, string>;
+  composter_status: {
+    start_loaded?: string[];
+    harvest?: string[];
+  };
   workflow_stage: string;
   scanned_bins: ScannedBin[];
   remarks: string;
@@ -63,11 +73,14 @@ interface WasteForm {
   loadingEntries: LoadingEntry[];
   harvestEntries: HarvestEntry[];
   maintenanceEntries: MaintenanceEntry[];
+  sites: { name: string } | null;
+  communityName?: string;
 }
 
 export function WasteFormsView() {
   const [activeView, setActiveView] = useState<'forms' | 'weekly-reports'>('forms');
   const [forms, setForms] = useState<WasteForm[]>([]);
+  const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedForm, setExpandedForm] = useState<string | null>(null);
@@ -80,7 +93,20 @@ export function WasteFormsView() {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    fetchForms();
+    const loadCommunities = async () => {
+      const { data, error: communityError } = await supabase
+        .from('communities')
+        .select('id, name, site_id')
+        .order('name');
+      if (communityError) {
+        setError(`Failed to load communities: ${communityError.message}`);
+        return;
+      }
+      setCommunities((data ?? []) as Community[]);
+    };
+
+    void loadCommunities();
+    void fetchForms();
   }, []);
 
   const fetchForms = async () => {
@@ -99,7 +125,13 @@ export function WasteFormsView() {
       .order('created_at', { ascending: false });
 
     if (filters.community) {
-      query = query.eq('community', filters.community);
+      const selectedCommunity = communities.find(community => community.id === filters.community);
+      if (!selectedCommunity?.site_id) {
+        setForms([]);
+        setLoading(false);
+        return;
+      }
+      query = query.eq('site_id', selectedCommunity.site_id);
     }
     if (filters.dateFrom) {
       query = query.gte('date', filters.dateFrom);
@@ -119,7 +151,14 @@ export function WasteFormsView() {
       setForms([]);
     } else if (data) {
       try {
-        const formIds = data.map(form => form.id);
+        type RawWasteForm = Omit<WasteForm, 'issues_identified' | 'composter_status' | 'scanned_bins' | 'loadingEntries' | 'harvestEntries' | 'maintenanceEntries' | 'sites'> & {
+          issues_identified: string[] | string | null;
+          composter_status: { start_loaded?: string[]; harvest?: string[] } | string | null;
+          scanned_bins: ScannedBin[] | string | null;
+          sites?: { name: string } | null;
+        };
+        const rawForms = (data ?? []) as unknown as RawWasteForm[];
+        const formIds = rawForms.map(form => form.id);
         let loadingEntries: LoadingEntry[] = [];
         let harvestEntries: HarvestEntry[] = [];
         let maintenanceEntries: MaintenanceEntry[] = [];
@@ -139,8 +178,10 @@ export function WasteFormsView() {
           maintenanceEntries = (maintenanceResult.data || []) as MaintenanceEntry[];
         }
 
-        const normalizedData = data.map(form => ({
+        const normalizedData: WasteForm[] = rawForms.map(form => ({
           ...form,
+          communityName: communities.find(community => community.site_id === form.site_id)?.name,
+          sites: null,
           issues_identified: typeof form.issues_identified === 'string'
             ? JSON.parse(form.issues_identified)
             : (form.issues_identified || []),
@@ -278,13 +319,14 @@ export function WasteFormsView() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Community</label>
-              <input
-                type="text"
+              <select
                 value={filters.community}
                 onChange={(e) => setFilters({ ...filters, community: e.target.value })}
-                placeholder="Filter by community"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              >
+                <option value="">All communities</option>
+                {communities.map(community => <option key={community.id} value={community.id}>{community.name}</option>)}
+              </select>
             </div>
 
             <div>
@@ -369,7 +411,7 @@ export function WasteFormsView() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{form.community || 'N/A'}</h3>
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{communities.find(community => community.site_id === form.site_id)?.name || form.sites?.name || form.community || 'N/A'}</h3>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded whitespace-nowrap">
                           {formatDate(form.date)}
@@ -414,7 +456,7 @@ export function WasteFormsView() {
                   {form.scanned_bins && form.scanned_bins.length > 0 && (
                     <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
                       <p className="text-sm font-semibold text-gray-900 mb-4">
-                        Scanned Bins - {form.scanned_bins[0]?.siteName || form.community}
+                        Scanned Bins - {form.scanned_bins[0]?.siteName || form.sites?.name || form.communityName || form.community}
                       </p>
 
                       <div className="space-y-4">

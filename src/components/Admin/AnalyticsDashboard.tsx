@@ -39,10 +39,14 @@ export function AnalyticsDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedCommunity, dateFrom, dateTo]);
+  }, [selectedCommunity, dateFrom, dateTo, communities]);
 
   const fetchCommunities = async () => {
-    const { data } = await supabase.from('communities').select('id, name, site_id').eq('active', true).order('name');
+    const { data, error: communitiesError } = await supabase.from('communities').select('id, name, site_id').order('name');
+    if (communitiesError) {
+      setError(communitiesError.message);
+      return;
+    }
     setCommunities((data ?? []) as Community[]);
   };
 
@@ -52,7 +56,7 @@ export function AnalyticsDashboard() {
     let query = supabase
       .from('waste_loading_entries')
       .select('id, bin_code, waste_type, weight_loaded_kg, cocopeat_kg, loading_datetime, site_id')
-      .order('loading_datetime', { ascending: false }) as any;
+      .order('loading_datetime', { ascending: false });
 
     if (selectedCommunity !== 'all') {
       const community = communities.find(c => c.id === selectedCommunity);

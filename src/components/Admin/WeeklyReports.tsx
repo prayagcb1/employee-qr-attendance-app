@@ -116,34 +116,44 @@ export function WeeklyReports() {
     fetchCommunities();
   }, []);
 
-  const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
+  const weekEnd = useMemo(() => weekStart ? addDays(weekStart, 6) : '', [weekStart]);
 
   useEffect(() => {
+    let cancelled = false;
+    setAvailableWeeks([]);
+    setWeekStart('');
+    setReport(null);
+
     const fetchAvailableWeeks = async () => {
       const community = communities.find(c => c.id === selectedCommunityId);
-      if (!community?.site_id) {
-        setAvailableWeeks([]);
+      if (!community?.site_id) return;
+
+      const [loadingRes, harvestRes, maintenanceRes] = await Promise.all([
+        supabase.from('waste_loading_entries').select('loading_datetime').eq('site_id', community.site_id).order('loading_datetime', { ascending: false }),
+        supabase.from('waste_harvest_entries').select('harvest_date').eq('site_id', community.site_id).order('harvest_date', { ascending: false }),
+        supabase.from('waste_maintenance_entries').select('created_at').eq('site_id', community.site_id).order('created_at', { ascending: false }),
+      ]);
+      const queryError = loadingRes.error || harvestRes.error || maintenanceRes.error;
+      if (queryError) {
+        if (!cancelled) setError(queryError.message);
         return;
       }
 
-      const { data, error: weeksError } = await supabase
-        .from('waste_loading_entries')
-        .select('loading_datetime')
-        .eq('site_id', community.site_id)
-        .order('loading_datetime', { ascending: false });
-
-      if (weeksError) {
-        setError(weeksError.message);
-        setAvailableWeeks([]);
-        return;
+      const dates = [
+        ...(loadingRes.data ?? []).map(entry => entry.loading_datetime.slice(0, 10)),
+        ...(harvestRes.data ?? []).map(entry => entry.harvest_date),
+        ...(maintenanceRes.data ?? []).map(entry => entry.created_at.slice(0, 10)),
+      ];
+      const weeks = Array.from(new Set(dates.map(getMondayOfWeek)));
+      if (!cancelled) {
+        setAvailableWeeks(weeks);
+        setWeekStart(weeks[0] ?? '');
+        setError(null);
       }
-
-      const weeks = Array.from(new Set((data ?? []).map(entry => getMondayOfWeek(entry.loading_datetime.slice(0, 10)))));
-      setAvailableWeeks(weeks);
-      setWeekStart(currentWeek => weeks.includes(currentWeek) ? currentWeek : (weeks[0] ?? currentWeek));
     };
 
-    void fetchAvailableWeeks();
+    if (selectedCommunityId && communities.length > 0) void fetchAvailableWeeks();
+    return () => { cancelled = true; };
   }, [communities, selectedCommunityId]);
 
   const generateReport = useCallback(async () => {
@@ -157,6 +167,11 @@ export function WeeklyReports() {
       setLoading(false);
       return;
     }
+    if (!weekStart) {
+      setError('Select a reporting week first.');
+      setLoading(false);
+      return;
+    }
     if (!community.site_id) {
       setError('This community is not linked to a site.');
       setLoading(false);
@@ -167,36 +182,43 @@ export function WeeklyReports() {
       const weekStartTs = `${weekStart}T00:00:00`;
       const weekEndTs = `${weekEnd}T23:59:59`;
 
-      // Fetch loading entries for this site within the week
-      const { data: loadingData, error: loadingErr } = await supabase
-        .from('waste_loading_entries')
-        .select('id, bin_code, waste_type, weight_loaded_kg, cocopeat_kg, loading_datetime, collector_name, remarks, form_id')
-        .eq('site_id', community.site_id)
-        .gte('loading_datetime', weekStartTs)
-        .lte('loading_datetime', weekEndTs)
-        .order('loading_datetime');
-
-      if (loadingErr) throw loadingErr;
-
-      const loadingEntries = (loadingData ?? []) as LoadingEntry[];
-      const formIds = Array.from(new Set(loadingEntries.map(e => e.form_id).filter(Boolean)));
-
-      // Fetch parent forms, harvest, and maintenance entries
-      const [formsRes, harvestRes, maintenanceRes] = await Promise.all([
-        formIds.length > 0
-          ? supabase.from('waste_management_forms').select('id, recorded_by, issues_identified, remarks, created_at').in('id', formIds)
-          : Promise.resolve({ data: [], error: null }),
-        formIds.length > 0
-          ? supabase.from('waste_harvest_entries').select('id, form_id, bin_code, compost_harvested_kg, harvest_date, compost_quality, moisture_level, remarks').in('form_id', formIds)
-          : Promise.resolve({ data: [], error: null }),
-        formIds.length > 0
-          ? supabase.from('waste_maintenance_entries').select('id, form_id, bin_code, maintenance_type, status, remarks').in('form_id', formIds)
-          : Promise.resolve({ data: [], error: null }),
+      const [loadingRes, harvestRes, maintenanceRes] = await Promise.all([
+        supabase.from('waste_loading_entries')
+          .select('id, bin_code, waste_type, weight_loaded_kg, cocopeat_kg, loading_datetime, collector_name, remarks, form_id')
+          .eq('site_id', community.site_id)
+          .gte('loading_datetime', weekStartTs)
+          .lte('loading_datetime', weekEndTs)
+          .order('loading_datetime'),
+        supabase.from('waste_harvest_entries')
+          .select('id, form_id, bin_code, compost_harvested_kg, harvest_date, compost_quality, moisture_level, remarks')
+          .eq('site_id', community.site_id)
+          .gte('harvest_date', weekStart)
+          .lte('harvest_date', weekEnd),
+        supabase.from('waste_maintenance_entries')
+          .select('id, form_id, bin_code, maintenance_type, status, remarks, created_at')
+          .eq('site_id', community.site_id)
+          .gte('created_at', weekStartTs)
+          .lte('created_at', weekEndTs),
       ]);
 
-      if (formsRes.error || harvestRes.error || maintenanceRes.error) {
-        throw formsRes.error || harvestRes.error || maintenanceRes.error;
+      if (loadingRes.error || harvestRes.error || maintenanceRes.error) {
+        throw loadingRes.error || harvestRes.error || maintenanceRes.error;
       }
+
+      const loadingEntries = (loadingRes.data ?? []) as LoadingEntry[];
+      const harvestEntries = (harvestRes.data ?? []) as HarvestEntry[];
+      const maintenanceEntries = (maintenanceRes.data ?? []) as MaintenanceEntry[];
+      const formIds = Array.from(new Set([
+        ...loadingEntries.map(e => e.form_id),
+        ...harvestEntries.map(e => e.form_id),
+        ...maintenanceEntries.map(e => e.form_id),
+      ].filter(Boolean)));
+
+      const formsRes = formIds.length > 0
+        ? await supabase.from('waste_management_forms').select('id, recorded_by, issues_identified, remarks, created_at').in('id', formIds)
+        : { data: [], error: null };
+
+      if (formsRes.error) throw formsRes.error;
 
       const forms = ((formsRes.data ?? []) as FormRecord[]).map(f => ({
         ...f,
@@ -206,8 +228,8 @@ export function WeeklyReports() {
       setReport({
         loadingEntries,
         forms,
-        harvestEntries: (harvestRes.data ?? []) as HarvestEntry[],
-        maintenanceEntries: (maintenanceRes.data ?? []) as MaintenanceEntry[],
+        harvestEntries,
+        maintenanceEntries,
         community,
       });
     } catch (err) {
@@ -218,10 +240,10 @@ export function WeeklyReports() {
   }, [communities, selectedCommunityId, weekEnd, weekStart]);
 
   useEffect(() => {
-    if (selectedCommunityId && communities.length > 0) {
+    if (selectedCommunityId && communities.length > 0 && weekStart) {
       void generateReport();
     }
-  }, [communities, generateReport, selectedCommunityId]);
+  }, [communities, generateReport, selectedCommunityId, weekStart]);
 
   // Calculations
   const totalWetWasteKg = report ? report.loadingEntries.filter(e => e.waste_type === 'wet_waste').reduce((s, e) => s + (Number(e.weight_loaded_kg) || 0), 0) : 0;
@@ -311,7 +333,8 @@ export function WeeklyReports() {
     });
 
     // Issues
-    const afterTable = (doc as any).lastAutoTable?.finalY ?? y + 10;
+    const pdfWithTable = doc as jsPDF & { lastAutoTable?: { finalY: number } };
+    const afterTable = pdfWithTable.lastAutoTable?.finalY ?? y + 10;
     y = afterTable + 8;
     if (allIssues.length > 0) {
       doc.setFontSize(12);
@@ -342,7 +365,7 @@ export function WeeklyReports() {
         bodyStyles: { fontSize: 8 },
         margin: { left: margin, right: margin },
       });
-      y = (doc as any).lastAutoTable?.finalY ?? y + 10;
+      y = pdfWithTable.lastAutoTable?.finalY ?? y + 10;
       y += 8;
     }
 
@@ -406,6 +429,9 @@ export function WeeklyReports() {
               <option value="">Choose a saved week</option>
               {availableWeeks.map(week => <option key={week} value={week}>{formatDate(week)} — {formatDate(addDays(week, 6))}</option>)}
             </select>
+            {selectedCommunityId && availableWeeks.length === 0 && (
+              <p className="mt-1 text-xs text-gray-500">No saved reports available. Select a Monday to generate a new report.</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Or choose Monday</label>
@@ -453,10 +479,10 @@ export function WeeklyReports() {
             </div>
           </div>
 
-          {report.loadingEntries.length === 0 ? (
+          {report.loadingEntries.length === 0 && report.harvestEntries.length === 0 && report.maintenanceEntries.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm p-12 text-center">
               <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No waste collection data found for this community during the selected week.</p>
+              <p className="text-gray-500">No submissions found for this community during the selected week.</p>
             </div>
           ) : (
             <>

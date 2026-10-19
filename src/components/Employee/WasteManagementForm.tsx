@@ -71,7 +71,13 @@ const nowDatetimeLocal = () => {
   return local.toISOString().slice(0, 16);
 };
 
-const todayDate = () => new Date().toISOString().split('T')[0];
+const todayDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 function makeLoadingEntry(collectorName: string): LoadingEntry {
   return {
@@ -188,18 +194,28 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     if (!scanTarget) return;
 
     try {
-      const { data: binData, error: binError } = await supabase
+      const { data: rawBinData, error: binError } = await supabase
         .from('bins')
         .select('id, bin_code, site_id, sites(id, name)')
         .eq('qr_code_data', qrData)
         .maybeSingle();
 
-      if (binError || !binData) {
+      if (binError || !rawBinData) {
         setError('Invalid bin QR code. Please try again.');
         return;
       }
 
-      const siteInfo = binData.sites as any;
+      const binData = rawBinData as unknown as {
+        id: string;
+        bin_code: string;
+        site_id: string;
+        sites: { id: string; name: string } | null;
+      };
+      const siteInfo = binData.sites;
+      if (!siteInfo) {
+        setError('This bin is not linked to a site. Please try another bin.');
+        return;
+      }
 
       if (selectedSiteId && binData.site_id !== selectedSiteId) {
         setError(`This bin belongs to a different site. Please scan only bins from "${selectedSiteName}".`);
@@ -273,12 +289,18 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     const today = todayDate();
 
     // Check duplicate form for site today
-    const { data: existingForm } = await supabase
+    const { data: existingForm, error: duplicateCheckError } = await supabase
       .from('waste_management_forms')
       .select('id')
       .eq('site_id', selectedSiteId)
       .eq('date', today)
       .maybeSingle();
+
+    if (duplicateCheckError) {
+      setError('Unable to check for an existing submission. Please try again.');
+      setLoading(false);
+      return;
+    }
 
     if (existingForm) {
       setError('A waste form has already been submitted for this site today.');
@@ -292,6 +314,13 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
       issuesArray.push(otherIssue.trim());
     }
 
+    const scannedBins = [
+      ...loadingEntries.filter(e => e.binInfo).map(e => e.binInfo!),
+      ...harvestEntries.filter(e => e.binInfo).map(e => e.binInfo!),
+      ...maintenanceEntries.filter(e => e.binInfo).map(e => e.binInfo!),
+    ];
+    const uniqueScannedBins = Array.from(new Map(scannedBins.map(bin => [bin.binId, bin])).values());
+
     // Insert parent form
     const { data: formRecord, error: formError } = await supabase
       .from('waste_management_forms')
@@ -301,13 +330,10 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
         date: today,
         recorded_by: employee.full_name,
         waste_segregated: true,
-        total_bins_50kg: loadingEntries.filter(e => e.binInfo).length,
+        total_bins_50kg: uniqueScannedBins.length,
         issues_identified: issuesArray,
         workflow_stage: hasLoading ? 'start_loaded' : hasHarvest ? 'harvest' : 'start_loaded',
-        scanned_bins: [
-          ...loadingEntries.filter(e => e.binInfo).map(e => ({ binCode: e.binInfo!.binCode, binId: e.binInfo!.binId, siteId: e.binInfo!.siteId, siteName: e.binInfo!.siteName })),
-          ...harvestEntries.filter(e => e.binInfo).map(e => ({ binCode: e.binInfo!.binCode, binId: e.binInfo!.binId, siteId: e.binInfo!.siteId, siteName: e.binInfo!.siteName })),
-        ],
+        scanned_bins: uniqueScannedBins.map(bin => ({ binCode: bin.binCode, binId: bin.binId, siteId: bin.siteId, siteName: bin.siteName })),
         site_id: selectedSiteId,
         composter_status: {
           start_loaded: loadingEntries.filter(e => e.binInfo).map(e => e.binInfo!.binCode),
@@ -408,7 +434,13 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     setLoading(false);
 
     if (errors.length > 0) {
-      setError(`Form submitted but some sections failed to save: ${errors.join(', ')}. Please contact support.`);
+      const { error: cleanupError } = await supabase
+        .from('waste_management_forms')
+        .delete()
+        .eq('id', formId);
+      setError(cleanupError
+        ? `Some sections failed to save (${errors.join(', ')}), and the incomplete submission could not be removed. Please contact support.`
+        : `Nothing was submitted because these sections could not be saved: ${errors.join(', ')}. Your entries are still here; please try again.`);
     } else {
       onSuccess();
       onClose();
