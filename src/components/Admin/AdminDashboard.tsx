@@ -10,11 +10,10 @@ import { QRAttendanceScanner } from './QRAttendanceScanner';
 import { BinQRApplication } from './BinQRApplication';
 import { ComposterManagement } from './ComposterManagement';
 import { CommunityManagement } from './CommunityManagement';
-import { DailyMonitoring } from './DailyMonitoring';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
-import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, Package, Upload, Box, Users as Users2, BarChart3, ClipboardCheck } from 'lucide-react';
+import { LogOut, Users, MapPin, Clock, ClipboardList, QrCode, FileText, Package, Upload, Box, Users as Users2, BarChart3 } from 'lucide-react';
 
-type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'bin-qr' | 'waste-import' | 'composters' | 'communities' | 'daily-monitoring' | 'analytics';
+type Tab = 'attendance' | 'attendance-report' | 'qr-scanner' | 'sites' | 'employees' | 'waste-forms' | 'bin-qr' | 'waste-import' | 'composters' | 'communities' | 'analytics';
 
 export function AdminDashboard() {
   const { employee, signOut } = useAuth();
@@ -31,7 +30,6 @@ export function AdminDashboard() {
     { id: 'bin-qr' as Tab, label: 'Bin QR', icon: Package },
     { id: 'composters' as Tab, label: 'Composters', icon: Box },
     { id: 'communities' as Tab, label: 'Communities', icon: Users2 },
-    { id: 'daily-monitoring' as Tab, label: 'Daily Monitoring', icon: ClipboardCheck },
     { id: 'analytics' as Tab, label: 'Analytics', icon: BarChart3 },
   ];
 
@@ -91,7 +89,6 @@ export function AdminDashboard() {
           {activeTab === 'bin-qr' && <BinQRApplication />}
           {activeTab === 'composters' && <ComposterManagement />}
           {activeTab === 'communities' && <CommunityManagement />}
-          {activeTab === 'daily-monitoring' && <DailyMonitoring />}
           {activeTab === 'analytics' && <AnalyticsDashboard />}
         </div>
       </div>
