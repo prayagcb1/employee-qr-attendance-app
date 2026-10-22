@@ -329,7 +329,7 @@ export function WeeklyReports() {
     // Bin-wise table
     autoTable(doc, {
       startY: y,
-      head: [['Bin', 'Type', 'Weight (kg)', 'Cocopeat (kg)', 'Loading Time', 'Collector']],
+      head: [['Bin', 'Type', 'Weight (kg)', 'Cocopeat (kg)', 'Loading Time', 'Collector', 'Remarks']],
       body: report.loadingEntries.map(e => [
         e.bin_code,
         WASTE_TYPE_LABELS[e.waste_type] ?? formatLabel(e.waste_type),
@@ -337,11 +337,13 @@ export function WeeklyReports() {
         e.cocopeat_kg ? (Number(e.cocopeat_kg)).toFixed(1) : '—',
         formatDateTime(e.loading_datetime),
         e.collector_name || '—',
+        e.remarks || '—',
       ]),
       theme: 'striped',
       headStyles: { fillColor: [34, 197, 94], fontSize: 9 },
       bodyStyles: { fontSize: 8 },
       margin: { left: margin, right: margin },
+      columnStyles: { 6: { cellWidth: 40 } },
     });
 
     // Issues
@@ -364,13 +366,14 @@ export function WeeklyReports() {
       y += 3;
       autoTable(doc, {
         startY: y,
-        head: [['Bin', 'Compost (kg)', 'Date', 'Quality', 'Moisture']],
+        head: [['Bin', 'Compost (kg)', 'Date', 'Quality', 'Moisture', 'Remarks']],
         body: report.harvestEntries.map(e => [
           e.bin_code,
           (Number(e.compost_harvested_kg) || 0).toFixed(1),
           e.harvest_date,
           formatLabel(e.compost_quality),
           formatLabel(e.moisture_level),
+          e.remarks || '—',
         ]),
         theme: 'striped',
         headStyles: { fillColor: [234, 179, 8], fontSize: 9 },
