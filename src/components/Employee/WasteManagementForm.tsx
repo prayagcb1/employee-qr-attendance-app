@@ -22,6 +22,7 @@ interface ScannedBinInfo {
 interface LoadingEntry {
   binInfo: ScannedBinInfo | null;
   weightLoadedKg: string;
+  wetWasteKg: string;
   wasteType: 'wet_waste' | 'dry_waste' | 'garden_waste' | 'food_waste';
   cocopeatKg: string;
   loadingDatetime: string;
@@ -83,6 +84,7 @@ function makeLoadingEntry(collectorName: string): LoadingEntry {
   return {
     binInfo: null,
     weightLoadedKg: '',
+    wetWasteKg: '',
     wasteType: 'wet_waste',
     cocopeatKg: '',
     loadingDatetime: nowDatetimeLocal(),
@@ -365,6 +367,7 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
             bin_id: e.binInfo!.binId,
             bin_code: e.binInfo!.binCode,
             weight_loaded_kg: parseFloat(e.weightLoadedKg),
+            wet_waste_kg: e.wetWasteKg ? parseFloat(e.wetWasteKg) : 0,
             waste_type: e.wasteType,
             cocopeat_kg: e.cocopeatKg ? parseFloat(e.cocopeatKg) : null,
             loading_datetime: new Date(e.loadingDatetime).toISOString(),
@@ -603,10 +606,23 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
                         </div>
                       </div>
 
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Wet Waste Weight (kg)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={entry.wetWasteKg}
+                          onChange={e => updateLoading(idx, 'wetWasteKg', e.target.value)}
+                          className={inputCls}
+                          placeholder="0.0"
+                        />
+                      </div>
+
                       {entry.wasteType === 'wet_waste' && (
                         <div className="flex items-center gap-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
                           <div className="flex-1">
-                            <label className="block text-xs font-semibold text-teal-800 mb-1">Cocopeat Added (kg)</label>
+                            <label className="block text-xs font-semibold text-teal-800 mb-1">Cocopeat + Old Compost Added (kg)</label>
                             <input
                               type="number"
                               min="0"

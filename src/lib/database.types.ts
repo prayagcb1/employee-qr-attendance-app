@@ -237,6 +237,7 @@ export interface Database {
           bin_id: string | null
           bin_code: string
           weight_loaded_kg: number
+          wet_waste_kg: number
           waste_type: string
           cocopeat_kg: number | null
           loading_datetime: string
@@ -252,6 +253,7 @@ export interface Database {
           bin_id?: string | null
           bin_code?: string
           weight_loaded_kg?: number
+          wet_waste_kg?: number
           waste_type?: string
           cocopeat_kg?: number | null
           loading_datetime?: string
@@ -267,6 +269,7 @@ export interface Database {
           bin_id?: string | null
           bin_code?: string
           weight_loaded_kg?: number
+          wet_waste_kg?: number
           waste_type?: string
           cocopeat_kg?: number | null
           loading_datetime?: string
