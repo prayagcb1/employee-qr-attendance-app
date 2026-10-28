@@ -290,26 +290,6 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
 
     const today = todayDate();
 
-    // Check duplicate form for site today
-    const { data: existingForm, error: duplicateCheckError } = await supabase
-      .from('waste_management_forms')
-      .select('id')
-      .eq('site_id', selectedSiteId)
-      .eq('date', today)
-      .maybeSingle();
-
-    if (duplicateCheckError) {
-      setError('Unable to check for an existing submission. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    if (existingForm) {
-      setError('A waste form has already been submitted for this site today.');
-      setLoading(false);
-      return;
-    }
-
     // Build issues array
     const issuesArray = [...issuesIdentified];
     if (issuesIdentified.includes('Other') && otherIssue.trim()) {
@@ -345,12 +325,6 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
       })
       .select('id')
       .single();
-
-    if (formError?.code === '23505') {
-      setError('A waste form has already been submitted for this site today.');
-      setLoading(false);
-      return;
-    }
 
     if (formError || !formRecord) {
       console.error('Waste form insert failed:', formError);
