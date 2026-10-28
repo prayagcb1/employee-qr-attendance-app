@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import {
@@ -262,7 +262,17 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const uniqueScannedBins = Array.from(
+    new Map(
+      [...loadingEntries, ...harvestEntries, ...maintenanceEntries]
+        .filter(e => e.binInfo)
+        .map(e => [e.binInfo!.binId, e.binInfo!] as const)
+    ).values()
+  );
+
+  const submittingRef = useRef(false);
+
+  const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -295,13 +305,6 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     if (issuesIdentified.includes('Other') && otherIssue.trim()) {
       issuesArray.push(otherIssue.trim());
     }
-
-    const scannedBins = [
-      ...loadingEntries.filter(e => e.binInfo).map(e => e.binInfo!),
-      ...harvestEntries.filter(e => e.binInfo).map(e => e.binInfo!),
-      ...maintenanceEntries.filter(e => e.binInfo).map(e => e.binInfo!),
-    ];
-    const uniqueScannedBins = Array.from(new Map(scannedBins.map(bin => [bin.binId, bin])).values());
 
     // Insert parent form
     const { data: formRecord, error: formError } = await supabase
@@ -431,6 +434,19 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    if (submittingRef.current) {
+      e.preventDefault();
+      return;
+    }
+    submittingRef.current = true;
+    try {
+      await submitForm(e);
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
   const toggleIssue = (issue: string) => {
     setIssuesIdentified(prev =>
       prev.includes(issue) ? prev.filter(i => i !== issue) : [...prev, issue]
@@ -513,6 +529,13 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
                 {!selectedSiteId && (
                   <p className="text-xs text-blue-600 mt-2">Select a site or scan a bin QR to detect site automatically.</p>
                 )}
+              </div>
+            )}
+
+            {uniqueScannedBins.length > 0 && (
+              <div className="rounded-xl border border-green-200 bg-green-50 p-3">
+                <p className="text-xs font-semibold text-green-800">Scanned Bins: {uniqueScannedBins.length}</p>
+                <p className="text-sm text-gray-800 mt-1 break-words">{uniqueScannedBins.map(bin => bin.binCode).join(' | ')}</p>
               </div>
             )}
 
