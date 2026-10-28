@@ -346,7 +346,14 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
       .select('id')
       .single();
 
+    if (formError?.code === '23505') {
+      setError('A waste form has already been submitted for this site today.');
+      setLoading(false);
+      return;
+    }
+
     if (formError || !formRecord) {
+      console.error('Waste form insert failed:', formError);
       setError('Failed to submit form. Please try again.');
       setLoading(false);
       return;
