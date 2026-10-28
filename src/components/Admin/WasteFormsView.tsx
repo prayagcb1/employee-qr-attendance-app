@@ -463,13 +463,13 @@ export function WasteFormsView() {
                         {form.composter_status?.start_loaded && form.composter_status.start_loaded.length > 0 && (
                           <div>
                             <h4 className="text-sm font-semibold text-gray-800 mb-2">Start Loaded</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                            <div className="flex flex-wrap gap-2">
                               {form.composter_status.start_loaded.map((binCode: string, idx: number) => (
                                 <div
                                   key={idx}
-                                  className="px-3 py-2 bg-blue-50 border border-blue-200 rounded text-center"
+                                  className="w-24 h-10 flex items-center justify-center px-2 bg-blue-50 border border-blue-200 rounded"
                                 >
-                                  <p className="text-sm font-medium text-blue-900">{binCode}</p>
+                                  <p className="text-sm font-medium text-blue-900 truncate">{binCode}</p>
                                 </div>
                               ))}
                             </div>
@@ -479,13 +479,13 @@ export function WasteFormsView() {
                         {form.composter_status?.harvest && form.composter_status.harvest.length > 0 && (
                           <div>
                             <h4 className="text-sm font-semibold text-gray-800 mb-2">Harvest</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                            <div className="flex flex-wrap gap-2">
                               {form.composter_status.harvest.map((binCode: string, idx: number) => (
                                 <div
                                   key={idx}
-                                  className="px-3 py-2 bg-green-50 border border-green-200 rounded text-center"
+                                  className="w-24 h-10 flex items-center justify-center px-2 bg-green-50 border border-green-200 rounded"
                                 >
-                                  <p className="text-sm font-medium text-green-900">{binCode}</p>
+                                  <p className="text-sm font-medium text-green-900 truncate">{binCode}</p>
                                 </div>
                               ))}
                             </div>
@@ -502,15 +502,15 @@ export function WasteFormsView() {
                         <div className="space-y-3">
                           {form.loadingEntries.map(entry => (
                             <div key={entry.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
-                                <p><span className="font-medium text-gray-700">Bin:</span> {displayValue(entry.bin_code)}</p>
-                                <p><span className="font-medium text-gray-700">Weight:</span> {displayValue(entry.weight_loaded_kg)} kg</p>
-                                <p><span className="font-medium text-gray-700">Waste type:</span> {formatLabel(entry.waste_type)}</p>
-                                <p><span className="font-medium text-gray-700">Cocopeat:</span> {entry.cocopeat_kg === null ? '—' : `${entry.cocopeat_kg} kg`}</p>
-                                <p><span className="font-medium text-gray-700">Loading time:</span> {formatDateTime(entry.loading_datetime)}</p>
-                                <p><span className="font-medium text-gray-700">Collector:</span> {displayValue(entry.collector_name)}</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                                <p className="min-w-0 break-words"><span className="font-medium text-gray-700">Bin:</span> {displayValue(entry.bin_code)}</p>
+                                <p className="min-w-0 break-words"><span className="font-medium text-gray-700">Weight:</span> {displayValue(entry.weight_loaded_kg)} kg</p>
+                                <p className="min-w-0 break-words"><span className="font-medium text-gray-700">Waste type:</span> {formatLabel(entry.waste_type)}</p>
+                                <p className="min-w-0 break-words"><span className="font-medium text-gray-700">Cocopeat:</span> {entry.cocopeat_kg === null ? '—' : `${entry.cocopeat_kg} kg`}</p>
+                                <p className="min-w-0 break-words"><span className="font-medium text-gray-700">Loading time:</span> {formatDateTime(entry.loading_datetime)}</p>
+                                <p className="min-w-0 break-words"><span className="font-medium text-gray-700">Collector:</span> {displayValue(entry.collector_name)}</p>
                               </div>
-                              <p className="mt-2 text-sm"><span className="font-medium text-gray-700">Remarks:</span> {displayValue(entry.remarks)}</p>
+                              <p className="mt-2 text-sm break-words"><span className="font-medium text-gray-700">Remarks:</span> {displayValue(entry.remarks)}</p>
                             </div>
                           ))}
                         </div>

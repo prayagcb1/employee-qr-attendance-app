@@ -12,6 +12,8 @@ interface CommunityAttendancePdfInput {
 const MARGIN = 14;
 const IN_PROGRESS = 'In Progress';
 const TABLE_WIDTH = 210 - MARGIN * 2;
+const DATE_COLUMN_WIDTH = 56;
+const TIME_COLUMN_WIDTH = 42;
 
 const formatPunchTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -87,16 +89,17 @@ export function buildCommunityAttendancePdf({ employee, siteName, sessions, rang
     head: [['Date', 'Clock-In Time', 'Clock-Out Time', 'Duration']],
     body,
     theme: 'striped',
-    headStyles: { fillColor: [37, 99, 235], fontSize: 9, halign: 'center' },
-    bodyStyles: { fontSize: 9, valign: 'middle' },
+    headStyles: { fillColor: [37, 99, 235], fontSize: 9, halign: 'center', valign: 'middle', minCellHeight: 9 },
+    bodyStyles: { fontSize: 9, halign: 'center', valign: 'middle', minCellHeight: 8, overflow: 'linebreak' },
     alternateRowStyles: { fillColor: [245, 247, 250] },
     margin: { left: MARGIN, right: MARGIN },
     tableWidth: TABLE_WIDTH,
+    showHead: 'everyPage',
     columnStyles: {
-      0: { cellWidth: 62, halign: 'left' },
-      1: { cellWidth: 40, halign: 'center' },
-      2: { cellWidth: 40, halign: 'center' },
-      3: { cellWidth: TABLE_WIDTH - 142, halign: 'center' },
+      0: { cellWidth: DATE_COLUMN_WIDTH },
+      1: { cellWidth: TIME_COLUMN_WIDTH },
+      2: { cellWidth: TIME_COLUMN_WIDTH },
+      3: { cellWidth: TABLE_WIDTH - DATE_COLUMN_WIDTH - TIME_COLUMN_WIDTH * 2 },
     },
   });
 
