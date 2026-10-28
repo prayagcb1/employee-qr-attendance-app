@@ -16,6 +16,7 @@ interface LoadingEntry {
   bin_code: string;
   waste_type: string;
   weight_loaded_kg: number;
+  wet_waste_kg: number;
   cocopeat_kg: number | null;
   loading_datetime: string;
   collector_name: string;
@@ -196,7 +197,7 @@ export function WeeklyReports() {
 
       const [loadingRes, harvestRes, maintenanceRes] = await Promise.all([
         supabase.from('waste_loading_entries')
-          .select('id, bin_code, waste_type, weight_loaded_kg, cocopeat_kg, loading_datetime, collector_name, remarks, form_id')
+          .select('id, bin_code, waste_type, weight_loaded_kg, wet_waste_kg, cocopeat_kg, loading_datetime, collector_name, remarks, form_id')
           .eq('site_id', community.site_id)
           .gte('loading_datetime', weekStartTs)
           .lte('loading_datetime', weekEndTs)
@@ -329,11 +330,12 @@ export function WeeklyReports() {
     // Bin-wise table
     autoTable(doc, {
       startY: y,
-      head: [['Bin', 'Type', 'Weight (kg)', 'Cocopeat (kg)', 'Loading Time', 'Collector', 'Remarks']],
+      head: [['Bin', 'Type', 'Weight (kg)', 'Wet Waste Weight (kg)', 'Cocopeat (kg)', 'Loading Time', 'Collector', 'Remarks']],
       body: report.loadingEntries.map(e => [
         e.bin_code,
         WASTE_TYPE_LABELS[e.waste_type] ?? formatLabel(e.waste_type),
         (Number(e.weight_loaded_kg) || 0).toFixed(1),
+        (Number(e.wet_waste_kg) || 0).toFixed(1),
         e.cocopeat_kg ? (Number(e.cocopeat_kg)).toFixed(1) : '—',
         formatDateTime(e.loading_datetime),
         e.collector_name || '—',
@@ -343,7 +345,16 @@ export function WeeklyReports() {
       headStyles: { fillColor: [34, 197, 94], fontSize: 9 },
       bodyStyles: { fontSize: 8 },
       margin: { left: margin, right: margin },
-      columnStyles: { 6: { cellWidth: 40 } },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 18 },
+        3: { cellWidth: 22 },
+        4: { cellWidth: 18 },
+        5: { cellWidth: 30 },
+        6: { cellWidth: 26 },
+        7: { cellWidth: 28 },
+      },
     });
 
     // Issues
@@ -591,6 +602,7 @@ export function WeeklyReports() {
                         <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Bin</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Waste Type</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Weight (kg)</th>
+                        <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Wet Waste Weight (kg)</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Cocopeat (kg)</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Loading Time</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Collector</th>
@@ -605,6 +617,7 @@ export function WeeklyReports() {
                             <td className="py-2 px-3 text-sm font-medium text-gray-900">{entry.bin_code}</td>
                             <td className="py-2 px-3 text-sm text-gray-700">{WASTE_TYPE_LABELS[entry.waste_type] ?? formatLabel(entry.waste_type)}</td>
                             <td className="py-2 px-3 text-sm text-gray-900 font-semibold">{(Number(entry.weight_loaded_kg) || 0).toFixed(1)}</td>
+                            <td className="py-2 px-3 text-sm text-gray-700">{(Number(entry.wet_waste_kg) || 0).toFixed(1)}</td>
                             <td className="py-2 px-3 text-sm text-gray-700">{entry.cocopeat_kg ? (Number(entry.cocopeat_kg)).toFixed(1) : '—'}</td>
                             <td className="py-2 px-3 text-sm text-gray-600">{formatDateTime(entry.loading_datetime)}</td>
                             <td className="py-2 px-3 text-sm text-gray-700">{entry.collector_name || '—'}</td>
