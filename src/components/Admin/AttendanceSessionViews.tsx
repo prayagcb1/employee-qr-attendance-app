@@ -191,7 +191,6 @@ export function AttendanceDateGroups({ sessions, showSiteCount }: AttendanceDate
 interface CommunityGroup {
   key: string;
   siteName: string;
-  siteAddress: string | null;
   sessions: AttendanceSession[];
 }
 
@@ -205,7 +204,6 @@ const buildCommunityGroups = (sessions: AttendanceSession[]): CommunityGroup[] =
       group = {
         key,
         siteName: session.siteName,
-        siteAddress: session.siteAddress,
         sessions: [],
       };
       groups.set(key, group);
@@ -269,7 +267,6 @@ export function CommunityAttendanceList({ sessions, employee, rangeLabel }: Comm
                   onClick={() => downloadCommunityAttendancePdf({
                     employee,
                     siteName: community.siteName,
-                    siteAddress: community.siteAddress,
                     sessions: community.sessions,
                     rangeLabel,
                   })}

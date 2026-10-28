@@ -1,31 +1,20 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { AttendancePunch, AttendanceSession, formatDurationMs, sumAttendance } from '../components/Admin/AttendanceSessionViews';
+import { AttendanceSession, formatDurationMs, sumAttendance } from '../components/Admin/AttendanceSessionViews';
 
 interface CommunityAttendancePdfInput {
   employee: { full_name: string; employee_code: string };
   siteName: string;
-  siteAddress: string | null;
   sessions: AttendanceSession[];
   rangeLabel: string;
 }
 
 const MARGIN = 14;
-const NOT_AVAILABLE = 'Location not available';
 const IN_PROGRESS = 'In Progress';
+const TABLE_WIDTH = 210 - MARGIN * 2;
 
 const formatPunchTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-const mapsUrl = (punch: AttendancePunch) =>
-  `https://www.google.com/maps?q=${punch.latitude},${punch.longitude}`;
-
-const punchLocation = (punch: AttendancePunch | null): { text: string; url: string | null } => {
-  if (!punch) return { text: IN_PROGRESS, url: null };
-  if (!punch.address && !Number.isFinite(punch.latitude)) return { text: NOT_AVAILABLE, url: null };
-  const text = punch.address || NOT_AVAILABLE;
-  return { text: `${text}\nView map`, url: mapsUrl(punch) };
-};
 
 const sanitizeForFilename = (value: string) => value.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
 
@@ -41,7 +30,7 @@ export function describeDateRange(dateFilter: string, selectedMonth: string): st
   return 'All recorded dates';
 }
 
-export function downloadCommunityAttendancePdf({ employee, siteName, siteAddress, sessions, rangeLabel }: CommunityAttendancePdfInput) {
+export function buildCommunityAttendancePdf({ employee, siteName, sessions, rangeLabel }: CommunityAttendancePdfInput): jsPDF {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const { recordCount, totalMs } = sumAttendance(sessions);
   const daysWorked = new Set(sessions.map(session => session.date)).size;
@@ -52,21 +41,12 @@ export function downloadCommunityAttendancePdf({ employee, siteName, siteAddress
     ))
     .sort((a, b) => new Date(a.clockIn.time).getTime() - new Date(b.clockIn.time).getTime());
 
-  const linkTargets = new Map<string, string>();
-  const body = rows.map((row, rowIndex) => {
-    const clockIn = punchLocation(row.clockIn);
-    const clockOut = punchLocation(row.clockOut);
-    if (clockIn.url) linkTargets.set(`${rowIndex}-2`, clockIn.url);
-    if (clockOut.url) linkTargets.set(`${rowIndex}-4`, clockOut.url);
-    return [
-      row.date,
-      formatPunchTime(row.clockIn.time),
-      clockIn.text,
-      row.clockOut ? formatPunchTime(row.clockOut.time) : IN_PROGRESS,
-      clockOut.text,
-      row.duration ?? IN_PROGRESS,
-    ];
-  });
+  const body = rows.map(row => [
+    row.date,
+    formatPunchTime(row.clockIn.time),
+    row.clockOut ? formatPunchTime(row.clockOut.time) : IN_PROGRESS,
+    row.clockOut ? (row.duration ?? IN_PROGRESS) : IN_PROGRESS,
+  ]);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
@@ -78,7 +58,6 @@ export function downloadCommunityAttendancePdf({ employee, siteName, siteAddress
     ['Field worker', employee.full_name],
     ['Employee ID', employee.employee_code],
     ['Community / site', siteName],
-    ['Community address', siteAddress || 'Not available'],
     ['Date range', rangeLabel],
     ['Report generated', new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })],
   ];
@@ -105,23 +84,19 @@ export function downloadCommunityAttendancePdf({ employee, siteName, siteAddress
 
   autoTable(doc, {
     startY: y,
-    head: [['Date', 'Clock-In Time', 'Clock-In Location', 'Clock-Out Time', 'Clock-Out Location', 'Duration']],
+    head: [['Date', 'Clock-In Time', 'Clock-Out Time', 'Duration']],
     body,
     theme: 'striped',
-    headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
-    bodyStyles: { fontSize: 8, valign: 'middle' },
+    headStyles: { fillColor: [37, 99, 235], fontSize: 9, halign: 'center' },
+    bodyStyles: { fontSize: 9, valign: 'middle' },
     alternateRowStyles: { fillColor: [245, 247, 250] },
     margin: { left: MARGIN, right: MARGIN },
+    tableWidth: TABLE_WIDTH,
     columnStyles: {
-      2: { textColor: [37, 99, 235] },
-      4: { textColor: [37, 99, 235] },
-    },
-    didDrawCell: data => {
-      if (data.section !== 'body') return;
-      const url = linkTargets.get(`${data.row.index}-${data.column.index}`);
-      if (url) {
-        doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url });
-      }
+      0: { cellWidth: 62, halign: 'left' },
+      1: { cellWidth: 40, halign: 'center' },
+      2: { cellWidth: 40, halign: 'center' },
+      3: { cellWidth: TABLE_WIDTH - 142, halign: 'center' },
     },
   });
 
@@ -134,11 +109,16 @@ export function downloadCommunityAttendancePdf({ employee, siteName, siteAddress
     doc.setTextColor(0);
   }
 
+  return doc;
+}
+
+export function downloadCommunityAttendancePdf(input: CommunityAttendancePdfInput) {
+  const doc = buildCommunityAttendancePdf(input);
   const fileName = [
     'Attendance',
-    sanitizeForFilename(employee.employee_code),
-    sanitizeForFilename(siteName),
-    sanitizeForFilename(rangeLabel),
+    sanitizeForFilename(input.employee.employee_code),
+    sanitizeForFilename(input.siteName),
+    sanitizeForFilename(input.rangeLabel),
   ].join('_');
   doc.save(`${fileName}.pdf`);
 }
