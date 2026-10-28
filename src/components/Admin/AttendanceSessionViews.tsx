@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Calendar, Clock, MapPin, ChevronDown } from 'lucide-react';
+import { Calendar, Clock, MapPin, ChevronDown, Download } from 'lucide-react';
+import { downloadCommunityAttendancePdf } from '../../lib/communityAttendancePdf';
 
 export interface AttendancePunch {
   time: string;
   latitude: number;
   longitude: number;
-  address?: string;
+  address: string | null;
 }
 
 export interface AttendanceEntry {
@@ -19,12 +20,13 @@ export interface AttendanceSession {
   date: string;
   siteId: string;
   siteName: string;
-  siteAddress: string;
+  siteAddress: string | null;
   entries: AttendanceEntry[];
   totalDuration: string | null;
 }
 
 const UNASSIGNED_SITE_KEY = 'unassigned';
+const ADDRESS_FALLBACK = 'Site address not available';
 
 const formatTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleTimeString('en-US', {
@@ -33,10 +35,22 @@ const formatTime = (timestamp: string) => {
   });
 };
 
-const formatDurationMs = (ms: number) => {
+export const formatDurationMs = (ms: number) => {
   const hours = Math.floor(ms / (1000 * 60 * 60));
   const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
   return `${hours}h ${minutes}m`;
+};
+
+export const sumAttendance = (sessions: AttendanceSession[]) => {
+  let recordCount = 0;
+  let totalMs = 0;
+  sessions.forEach(session => {
+    session.entries.forEach(entry => {
+      recordCount += 1;
+      totalMs += entry.durationMs ?? 0;
+    });
+  });
+  return { recordCount, totalMs };
 };
 
 interface AttendanceDateGroupsProps {
@@ -72,7 +86,7 @@ export function AttendanceDateGroups({ sessions, showSiteCount }: AttendanceDate
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 pb-3 border-b border-gray-200">
                   <div className="mb-2 sm:mb-0">
                     <p className="font-semibold text-gray-900 text-base">{session.siteName}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{session.siteAddress}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{session.siteAddress || ADDRESS_FALLBACK}</p>
                   </div>
                   {session.totalDuration && (
                     <div>
@@ -102,7 +116,7 @@ export function AttendanceDateGroups({ sessions, showSiteCount }: AttendanceDate
                               <div className="flex items-start gap-1 text-xs text-gray-600">
                                 <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
                                 <div>
-                                  <p className="mb-1 line-clamp-2">{entry.clockIn.address}</p>
+                                  <p className="mb-1 line-clamp-2">{entry.clockIn.address || ADDRESS_FALLBACK}</p>
                                   <a
                                     href={`https://www.google.com/maps?q=${entry.clockIn.latitude},${entry.clockIn.longitude}`}
                                     target="_blank"
@@ -133,7 +147,7 @@ export function AttendanceDateGroups({ sessions, showSiteCount }: AttendanceDate
                               <div className="flex items-start gap-1 text-xs text-gray-600">
                                 <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
                                 <div>
-                                  <p className="mb-1 line-clamp-2">{entry.clockOut.address}</p>
+                                  <p className="mb-1 line-clamp-2">{entry.clockOut.address || ADDRESS_FALLBACK}</p>
                                   <a
                                     href={`https://www.google.com/maps?q=${entry.clockOut.latitude},${entry.clockOut.longitude}`}
                                     target="_blank"
@@ -177,8 +191,7 @@ export function AttendanceDateGroups({ sessions, showSiteCount }: AttendanceDate
 interface CommunityGroup {
   key: string;
   siteName: string;
-  recordCount: number;
-  totalMs: number;
+  siteAddress: string | null;
   sessions: AttendanceSession[];
 }
 
@@ -192,24 +205,24 @@ const buildCommunityGroups = (sessions: AttendanceSession[]): CommunityGroup[] =
       group = {
         key,
         siteName: session.siteName,
-        recordCount: 0,
-        totalMs: 0,
+        siteAddress: session.siteAddress,
         sessions: [],
       };
       groups.set(key, group);
     }
-
     group.sessions.push(session);
-    session.entries.forEach(entry => {
-      group!.recordCount += 1;
-      group!.totalMs += entry.durationMs ?? 0;
-    });
   });
 
   return Array.from(groups.values()).sort((a, b) => a.siteName.localeCompare(b.siteName));
 };
 
-export function CommunityAttendanceList({ sessions }: { sessions: AttendanceSession[] }) {
+interface CommunityAttendanceListProps {
+  sessions: AttendanceSession[];
+  employee: { full_name: string; employee_code: string };
+  rangeLabel: string;
+}
+
+export function CommunityAttendanceList({ sessions, employee, rangeLabel }: CommunityAttendanceListProps) {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
   const communities = useMemo(() => buildCommunityGroups(sessions), [sessions]);
 
@@ -229,25 +242,44 @@ export function CommunityAttendanceList({ sessions }: { sessions: AttendanceSess
     <div className="space-y-4">
       {communities.map(community => {
         const isOpen = expandedKeys.has(community.key);
+        const { recordCount, totalMs } = sumAttendance(community.sessions);
         return (
           <div key={community.key} className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
-            <button
-              type="button"
-              onClick={() => toggleCommunity(community.key)}
-              aria-expanded={isOpen}
-              className="w-full flex items-center justify-between gap-4 p-4 text-left hover:bg-gray-50 transition"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-900 truncate">{community.siteName}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Attendance records: {community.recordCount}</p>
-                <p className="text-xs text-gray-500">
-                  Total duration: {community.totalMs > 0 ? formatDurationMs(community.totalMs) : 'No completed sessions'}
-                </p>
+            <div className="flex items-stretch">
+              <button
+                type="button"
+                onClick={() => toggleCommunity(community.key)}
+                aria-expanded={isOpen}
+                className="flex-1 min-w-0 flex items-center justify-between gap-4 p-4 text-left hover:bg-gray-50 transition"
+              >
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{community.siteName}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Attendance records: {recordCount}</p>
+                  <p className="text-xs text-gray-500">
+                    Total duration: {totalMs > 0 ? formatDurationMs(totalMs) : 'No completed sessions'}
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              <div className="flex items-center pr-4 pl-2">
+                <button
+                  type="button"
+                  onClick={() => downloadCommunityAttendancePdf({
+                    employee,
+                    siteName: community.siteName,
+                    siteAddress: community.siteAddress,
+                    sessions: community.sessions,
+                    rangeLabel,
+                  })}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition whitespace-nowrap"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download PDF</span>
+                </button>
               </div>
-              <ChevronDown
-                className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
+            </div>
             {isOpen && (
               <div className="border-t border-gray-200 bg-gray-50 p-3 sm:p-4 space-y-4">
                 <AttendanceDateGroups sessions={community.sessions} showSiteCount={false} />

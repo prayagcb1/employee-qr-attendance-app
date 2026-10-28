@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { User, ChevronRight, ArrowLeft, CalendarCheck, RefreshCw } from 'lucide-react';
 import { AttendanceDateGroups, AttendanceSession, CommunityAttendanceList } from './AttendanceSessionViews';
+import { describeDateRange } from '../../lib/communityAttendancePdf';
 
 interface Employee {
   id: string;
@@ -168,7 +169,7 @@ export function AttendanceView() {
           date,
           siteId: log.site_id,
           siteName: log.sites?.name || 'Unknown site',
-          siteAddress: log.sites?.address || 'Site address not available',
+          siteAddress: log.sites?.address ?? null,
           entries: [],
           totalDuration: null,
         });
@@ -182,7 +183,7 @@ export function AttendanceView() {
             time: log.timestamp,
             latitude: log.latitude,
             longitude: log.longitude,
-            address: log.sites?.address || 'Site address not available',
+            address: log.sites?.address ?? null,
           },
           clockOut: null,
           duration: null,
@@ -195,7 +196,7 @@ export function AttendanceView() {
             time: log.timestamp,
             latitude: log.latitude,
             longitude: log.longitude,
-            address: log.sites?.address || 'Site address not available',
+            address: log.sites?.address ?? null,
           };
 
           const clockInTime = new Date(lastEntry.clockIn.time).getTime();
@@ -387,7 +388,11 @@ export function AttendanceView() {
           ) : selectedEmployee.role === 'field_worker' ? (
             <div>
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Community Attendance</h3>
-              <CommunityAttendanceList sessions={sessions} />
+              <CommunityAttendanceList
+                sessions={sessions}
+                employee={selectedEmployee}
+                rangeLabel={describeDateRange(dateFilter, selectedMonth)}
+              />
             </div>
           ) : (
             <div className="space-y-6">
