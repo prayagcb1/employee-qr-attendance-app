@@ -75,6 +75,63 @@ interface WasteForm {
   maintenanceEntries: MaintenanceEntry[];
   sites: { name: string } | null;
   communityName?: string;
+  collection_session_id: string | null;
+  groupedFormIds: string[];
+}
+
+const uniqueBy = <T,>(items: T[], keyOf: (item: T) => string): T[] => {
+  const seen = new Map<string, T>();
+  items.forEach(item => {
+    const key = keyOf(item);
+    if (!seen.has(key)) seen.set(key, item);
+  });
+  return Array.from(seen.values());
+};
+
+function mergeFormGroup(group: WasteForm[]): WasteForm {
+  if (group.length === 1) return group[0];
+  const sorted = [...group].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const scannedBins = uniqueBy(sorted.flatMap(form => form.scanned_bins), bin => bin.binId || bin.binCode);
+  return {
+    ...first,
+    created_at: last.created_at,
+    total_bins_50kg: scannedBins.length,
+    waste_segregated: sorted.every(form => form.waste_segregated),
+    issues_identified: Array.from(new Set(sorted.flatMap(form => form.issues_identified))),
+    composter_status: {
+      start_loaded: Array.from(new Set(sorted.flatMap(form => form.composter_status.start_loaded ?? []))),
+      harvest: Array.from(new Set(sorted.flatMap(form => form.composter_status.harvest ?? []))),
+    },
+    scanned_bins: scannedBins,
+    remarks: Array.from(new Set(sorted.map(form => form.remarks?.trim()).filter(Boolean))).join('\n'),
+    loadingEntries: sorted.flatMap(form => form.loadingEntries),
+    harvestEntries: sorted.flatMap(form => form.harvestEntries),
+    maintenanceEntries: sorted.flatMap(form => form.maintenanceEntries),
+    groupedFormIds: sorted.map(form => form.id),
+  };
+}
+
+function groupFormsBySession(forms: WasteForm[]): WasteForm[] {
+  const groups: WasteForm[][] = [];
+  const groupBySession = new Map<string, WasteForm[]>();
+  forms.forEach(form => {
+    const sessionId = form.collection_session_id;
+    if (!sessionId) {
+      groups.push([form]);
+      return;
+    }
+    const existing = groupBySession.get(sessionId);
+    if (existing) {
+      existing.push(form);
+      return;
+    }
+    const created = [form];
+    groupBySession.set(sessionId, created);
+    groups.push(created);
+  });
+  return groups.map(mergeFormGroup);
 }
 
 export function WasteFormsView() {
@@ -151,7 +208,7 @@ export function WasteFormsView() {
       setForms([]);
     } else if (data) {
       try {
-        type RawWasteForm = Omit<WasteForm, 'issues_identified' | 'composter_status' | 'scanned_bins' | 'loadingEntries' | 'harvestEntries' | 'maintenanceEntries' | 'sites'> & {
+        type RawWasteForm = Omit<WasteForm, 'issues_identified' | 'composter_status' | 'scanned_bins' | 'loadingEntries' | 'harvestEntries' | 'maintenanceEntries' | 'sites' | 'groupedFormIds'> & {
           issues_identified: string[] | string | null;
           composter_status: { start_loaded?: string[]; harvest?: string[] } | string | null;
           scanned_bins: ScannedBin[] | string | null;
@@ -194,8 +251,9 @@ export function WasteFormsView() {
           loadingEntries: loadingEntries.filter(entry => entry.form_id === form.id),
           harvestEntries: harvestEntries.filter(entry => entry.form_id === form.id),
           maintenanceEntries: maintenanceEntries.filter(entry => entry.form_id === form.id),
+          groupedFormIds: [form.id],
         }));
-        setForms(normalizedData);
+        setForms(groupFormsBySession(normalizedData));
         setError(null);
       } catch (err) {
         console.error('Error normalizing data:', err);
@@ -249,18 +307,22 @@ export function WasteFormsView() {
     return names.length > 0 ? names.join(', ') : '—';
   };
 
-  const handleDelete = async (formId: string, community: string) => {
+  const handleDelete = async (formIds: string[], community: string) => {
     if (!confirm(`Are you sure you want to delete the waste form for ${community}?\n\nThis action cannot be undone.`)) {
       return;
     }
 
-    const { error } = await supabase
+    const { data: deleted, error } = await supabase
       .from('waste_management_forms')
       .delete()
-      .eq('id', formId);
+      .in('id', formIds)
+      .select('id');
 
     if (error) {
       alert(`Failed to delete form: ${error.message}`);
+    } else if ((deleted?.length ?? 0) < formIds.length) {
+      alert('Not all submissions in this group could be deleted. Please refresh and try again.');
+      fetchForms();
     } else {
       alert('Form deleted successfully');
       fetchForms();
@@ -590,7 +652,7 @@ export function WasteFormsView() {
                     </div>
 
                     <button
-                      onClick={() => handleDelete(form.id, form.community)}
+                      onClick={() => handleDelete(form.groupedFormIds, form.community)}
                       className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium flex items-center gap-2"
                     >
                       <Trash2 className="w-4 h-4" />

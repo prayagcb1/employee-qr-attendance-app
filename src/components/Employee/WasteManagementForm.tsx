@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { hasOpenCollectionSession, resumeOrStartCollectionSession, finishCollectionSession } from '../../lib/collectionSession';
 import {
   ClipboardList, X, QrCode, Trash2, Plus, ChevronDown, ChevronUp,
   Package, Wrench, Leaf, AlertTriangle
@@ -153,6 +154,22 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
     supabase.from('sites').select('id, name').eq('active', true).order('name')
       .then(({ data }) => setSitesList((data ?? []) as {id: string; name: string}[]));
   }, []);
+
+  const employeeId = employee?.id;
+  const [collectionSessionOpen, setCollectionSessionOpen] = useState(false);
+
+  useEffect(() => {
+    if (!employeeId || !selectedSiteId) {
+      setCollectionSessionOpen(false);
+      return;
+    }
+    setCollectionSessionOpen(hasOpenCollectionSession(employeeId, selectedSiteId, todayDate()));
+  }, [employeeId, selectedSiteId]);
+
+  const handleFinishCollection = () => {
+    if (employeeId && selectedSiteId) finishCollectionSession(employeeId, selectedSiteId, todayDate());
+    setCollectionSessionOpen(false);
+  };
 
   const handleSiteSelect = (siteId: string, siteName: string) => {
     setSelectedSiteId(siteId);
@@ -320,6 +337,7 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
         workflow_stage: hasLoading ? 'start_loaded' : hasHarvest ? 'harvest' : 'start_loaded',
         scanned_bins: uniqueScannedBins.map(bin => ({ binCode: bin.binCode, binId: bin.binId, siteId: bin.siteId, siteName: bin.siteName })),
         site_id: selectedSiteId,
+        collection_session_id: resumeOrStartCollectionSession(employee.id, selectedSiteId, today),
         composter_status: {
           start_loaded: loadingEntries.filter(e => e.binInfo).map(e => e.binInfo!.binCode),
           harvest: harvestEntries.filter(e => e.binInfo).map(e => e.binInfo!.binCode),
@@ -536,6 +554,19 @@ export function WasteManagementForm({ onClose, onSuccess }: WasteManagementFormP
               <div className="rounded-xl border border-green-200 bg-green-50 p-3">
                 <p className="text-xs font-semibold text-green-800">Scanned Bins: {uniqueScannedBins.length}</p>
                 <p className="text-sm text-gray-800 mt-1 break-words">{uniqueScannedBins.map(bin => bin.binCode).join(' | ')}</p>
+              </div>
+            )}
+
+            {collectionSessionOpen && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                <p className="text-xs text-blue-800">Collection in progress. Bins you submit now stay grouped with this visit until you finish.</p>
+                <button
+                  type="button"
+                  onClick={handleFinishCollection}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-blue-300 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
+                >
+                  Finish Collection
+                </button>
               </div>
             )}
 

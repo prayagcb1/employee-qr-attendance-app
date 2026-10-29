@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { User, ChevronRight, ArrowLeft, CalendarCheck, RefreshCw } from 'lucide-react';
+import { User, ChevronRight, ArrowLeft, CalendarCheck, RefreshCw, Download } from 'lucide-react';
 import { AttendanceDateGroups, AttendanceSession, CommunityAttendanceList } from './AttendanceSessionViews';
-import { describeDateRange } from '../../lib/communityAttendancePdf';
+import { describeDateRange, downloadCompleteAttendancePdf } from '../../lib/communityAttendancePdf';
 
 interface Employee {
   id: string;
@@ -46,6 +46,7 @@ export function AttendanceView() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
+  const [downloadingComplete, setDownloadingComplete] = useState(false);
 
   useEffect(() => {
     fetchEmployees();
@@ -262,6 +263,34 @@ export function AttendanceView() {
     }
   };
 
+  const handleDownloadCompletePdf = async () => {
+    if (!selectedEmployee) return;
+    if (sessions.length === 0) {
+      alert('There are no attendance records for this worker in the selected period, so there is nothing to download.');
+      return;
+    }
+    setDownloadingComplete(true);
+    try {
+      const { data, error } = await supabase.from('communities').select('name, site_id');
+      if (error) console.error('Error fetching community names:', error);
+      const communityNames: Record<string, string> = {};
+      (data ?? []).forEach(community => {
+        if (community.site_id) communityNames[community.site_id] = community.name;
+      });
+      downloadCompleteAttendancePdf({
+        employee: selectedEmployee,
+        sessions,
+        rangeLabel: describeDateRange(dateFilter, selectedMonth),
+        communityNames,
+      });
+    } catch (err) {
+      console.error('Failed to generate complete attendance PDF:', err);
+      alert('The attendance PDF could not be created. Please try again, and contact support if it keeps failing.');
+    } finally {
+      setDownloadingComplete(false);
+    }
+  };
+
   const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       month: 'short',
@@ -362,6 +391,18 @@ export function AttendanceView() {
                   className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium text-sm bg-blue-50 rounded-lg"
                 >
                   Clear
+                </button>
+              )}
+
+              {selectedEmployee.role === 'field_worker' && (
+                <button
+                  onClick={handleDownloadCompletePdf}
+                  disabled={downloadingComplete}
+                  className="flex items-center justify-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Download one PDF with all communities for the selected filters"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="text-sm font-medium">{downloadingComplete ? 'Preparing...' : 'Download Complete Attendance PDF'}</span>
                 </button>
               )}
             </div>

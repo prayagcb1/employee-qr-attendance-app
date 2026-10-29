@@ -192,6 +192,7 @@ export interface Database {
           scanned_bins: unknown[] | string | null
           remarks: string
           site_id: string | null
+          collection_session_id: string | null
           created_at: string
         }
         Insert: {
@@ -208,6 +209,7 @@ export interface Database {
           scanned_bins?: unknown[] | string | null
           remarks?: string
           site_id?: string | null
+          collection_session_id?: string | null
           created_at?: string
         }
         Update: {
